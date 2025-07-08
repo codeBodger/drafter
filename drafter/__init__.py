@@ -10,7 +10,7 @@ import drafter.hacks
 # Provide default route
 route('index')(default_index)
 
-__version__ = '2.0.0a'
+__version__ = '2.1.0a'
 
 if __name__ == '__main__':
     print("This package is meant to be imported, not run as a script. For now, at least.")
