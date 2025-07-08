@@ -32,6 +32,49 @@ logger = logging.getLogger('drafter')
 
 DEFAULT_ALLOWED_EXTENSIONS = ('py', 'js', 'css', 'txt', 'json', 'csv', 'html', 'md')
 
+def get_files_for_bundling(
+        main_file: str, root_path: str,
+        allowed_extensions: Optional[set[str]] = None,
+    ) -> tuple[dict[str, str], list[str], list[str]]:
+    """
+    Gets all files from a specified directory ready for bundling. The function traverses
+    through the given directory, reads files with extensions present in the allowed
+    extensions list, and returns them as a dictionary.  It also identifies files to be
+    skipped and keeps a record of successfully added files.
+
+    :param main_file: The path to the main Python file. This file will be labeled
+        as "main.py" in the JavaScript output.
+    :type main_file: str
+    :param root_path: The root directory to search for files.
+    :type root_path: str
+    :param allowed_extensions: A collection of file extensions allowed for inclusion
+        in the final JavaScript output. Defaults to a predefined tuple.
+    :return: A tuple containing:
+        - The dict of file contents.
+        - A list of skipped files that do not match the allowed extensions.
+        - A list of added files that were successfully bundled.
+    :rtype: tuple[dict[str, str], list[str], list[str]]
+    """
+    allowed_extensions = allowed_extensions or set(DEFAULT_ALLOWED_EXTENSIONS)
+
+    skipped_files: list[str] = []
+    added_files: list[str] = []
+    all_files: dict[str, str] = {}
+    for root, dirs, files in os.walk(root_path):
+        for file in files:
+            is_main = os.path.join(root_path, file) == main_file
+            path = pathlib.Path(os.path.join(root, file)).relative_to(root_path)
+            if pathlib.Path(file).suffix[1:].lower() not in allowed_extensions:
+                skipped_files.append(os.path.join(root, file))
+                continue
+            with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
+                content = f.read()
+                filename = str(path.as_posix()) if not is_main else "main.py"
+                all_files[filename] = content
+                added_files.append(os.path.join(root, file))
+    
+    return all_files, skipped_files, added_files
+
 def bundle_files_into_js(
         main_file: str, root_path: str,
         allowed_extensions: Optional[set[str]] = None,
@@ -67,28 +110,13 @@ def bundle_files_into_js(
         - A list of added files that were successfully bundled.
     :rtype: tuple[str, list[str], list[str]]
     """
-    allowed_extensions = allowed_extensions or set(DEFAULT_ALLOWED_EXTENSIONS)
     js_obj_name = js_obj_name or "Sk.builtinFiles.files"
     sep = sep or "\n"
     pref = pref or ""
 
-    skipped_files: list[str] = []
-    added_files: list[str] = []
-    all_files = {}
-    for root, dirs, files in os.walk(root_path):
-        for file in files:
-            is_main = os.path.join(root_path, file) == main_file
-            path = pathlib.Path(os.path.join(root, file)).relative_to(root_path)
-            if pathlib.Path(file).suffix[1:].lower() not in allowed_extensions:
-                skipped_files.append(os.path.join(root, file))
-                continue
-            with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
-                content = f.read()
-                filename = str(path.as_posix()) if not is_main else "main.py"
-                all_files[filename] = content
-                added_files.append(os.path.join(root, file))
+    all_files, skipped_files, added_files = get_files_for_bundling(main_file, root_path, allowed_extensions)
 
-    js_lines = []
+    js_lines: list[str] = []
     for filename, contents in all_files.items():
         filename = pref + filename
         js_lines.append(f"{js_obj_name}[{filename!r}] = {contents!r};\n")
