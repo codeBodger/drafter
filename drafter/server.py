@@ -123,6 +123,54 @@ def bundle_files_into_js(
 
     return sep.join(js_lines), skipped_files, added_files
 
+def bundle_files_into_py(
+        main_file: str, root_path: str,
+        allowed_extensions: Optional[set[str]] = None,
+        indent: Optional[int] = None
+    ) -> str:
+    """
+    Bundles all files from a speficied directory into a Python-compatible format for
+    PyScript, a WASM-based online Python interpreter. The function traverses through the
+    given directory, reads files with extensions present in the allowed extensions list,
+    and aggregates them into a Python code snippet, which, when run, reproduces the file
+    and directory structure in PyScript's virtual filesystem.
+    
+    :param main_file: The path to the main Python file. This file will be labeled
+        as "main.py" in the Python output.
+    :type main_file: str
+    :param root_path: The root directory to search for files.
+    :type root_path: str
+    :param allowed_extensions: A collection of file extensions allowed for inclusion
+        in the final Python output. Defaults to a predefined tuple.
+    :type allowed_extensions: set[str]
+    :param indent: The number of indents (four spaces) each line should be.
+    :type indent: int
+    :return: The combined Python output string with the files' contents.
+    :rtype: str
+    """
+    indent_str = "    " * (indent or 0)
+
+    all_files, *_ = get_files_for_bundling(main_file, root_path, allowed_extensions)
+
+    py_segments = [
+        # f"{indent_str}os.makedirs(os.path.dirname({filename!r}), exist_ok=True)\n"
+        # f"{indent_str}with open({filename!r}, 'w') as f:\n"
+        # f"{indent_str}    f.write({contents!r})"
+        f"{indent_str}write({filename!r}, {contents!r})"
+        for filename, contents in all_files.items()
+    ]
+
+    py_segments = [
+        f"from pathlib import Path", # No indent on first line
+        f"{indent_str}def write(filename, contents):",
+        f"{indent_str}    output_file = Path(filename)",
+        f"{indent_str}    output_file.parent.mkdir(exist_ok=True, parents=True)",
+        f"{indent_str}    output_file.write_text(contents)",
+        *py_segments
+    ]
+
+    return "\n".join(py_segments)
+
 
 class Server:
     """
