@@ -2,9 +2,9 @@ import base64
 import html
 import os
 import traceback
-from dataclasses import dataclass, asdict, replace, field, fields
+from dataclasses import dataclass, asdict, replace, fields
 from functools import wraps
-from typing import Any, Callable, Never, Optional, List, Tuple, Union
+from typing import Any, Callable, Optional, List, Tuple, Union, cast
 import json
 import inspect
 import pathlib
@@ -12,19 +12,19 @@ import pathlib
 # import bottle
 
 from drafter.urls import friendly_urls
-from drafter.components import PageContent
+# from drafter.components import PageContent
 from drafter.configuration import ServerConfiguration
-from drafter.constants import RESTORABLE_STATE_KEY, SUBMIT_BUTTON_KEY, PREVIOUSLY_PRESSED_BUTTON
+# from drafter.constants import RESTORABLE_STATE_KEY, SUBMIT_BUTTON_KEY, PREVIOUSLY_PRESSED_BUTTON
 from drafter.debug import DebugInformation
 # from drafter.setup import Bottle, abort, request, static_file
 from drafter.history import VisitedPage, rehydrate_json, dehydrate_json, ConversionRecord, UnchangedRecord, \
-    remap_hidden_form_parameters, safe_repr#, get_params
-from drafter.page import Page, _Page
-from drafter.files import TEMPLATE_200, TEMPLATE_404, TEMPLATE_500, INCLUDE_STYLES, TEMPLATE_200_WITHOUT_HEADER, TEMPLATE_INDEX_HTML, \
-    TEMPLATE_SKULPT_DEPLOY, seek_file_by_line
-from drafter.raw_files import get_raw_files, get_themes
-from drafter.urls import remove_url_query_params
-from drafter.image_support import HAS_PILLOW, PILImage
+    safe_repr#, remap_hidden_form_parameters, get_params
+from drafter.page import Page
+from drafter.files import TEMPLATE_200, TEMPLATE_500, TEMPLATE_200_WITHOUT_HEADER, TEMPLATE_INDEX_HTML, \
+    TEMPLATE_SKULPT_DEPLOY, seek_file_by_line#, TEMPLATE_404, INCLUDE_STYLES
+from drafter.raw_files import get_raw_files, get_themes # type: ignore
+# from drafter.urls import remove_url_query_params
+# from drafter.image_support import HAS_PILLOW, PILImage
 
 import logging
 logger = logging.getLogger('drafter')
@@ -370,43 +370,43 @@ class Server:
         # self.app = Bottle()
 
         # Setup error pages
-        # def handle_404(error): # type: (bottle.HTTPError) -> str
-        def handle_404(error): # type: (Any) -> str
-            """
-            This is the default handler for HTTP 404 errors. It renders a custom error page
-            that displays a message indicating the requested page was not found, and provides
-            a link to return to the index page.
-            """
-            message = "<p>The requested page <code>{url}</code> was not found.</p>"#.format(url=request.url)
-            # TODO: Only show if not the index
-            message += "\n<p>You might want to return to the <a href='/'>index</a> page.</p>"
-            original_error = f"{error.body}\n"
-            if hasattr(error, 'traceback'):
-                original_error += f"{error.traceback}\n"
-            return TEMPLATE_404.format(title="404 Page not found", message=message,
-                                       error=original_error,
-                                       routes="\n".join(
-                                           f"<li><code>{r!r}</code>: <code>{func}</code></li>" for r, func in
-                                           self.original_routes))
+        # TODO: Use this when the requested route is not found
+        # def handle_404(error): # type: (Any) -> str
+        #     """
+        #     This is the default handler for HTTP 404 errors. It renders a custom error page
+        #     that displays a message indicating the requested page was not found, and provides
+        #     a link to return to the index page.
+        #     """
+        #     message = "<p>The requested page <code>{url}</code> was not found.</p>"#.format(url=request.url)
+        #     # TODO: Only show if not the index
+        #     message += "\n<p>You might want to return to the <a href='/'>index</a> page.</p>"
+        #     original_error = f"{error.body}\n"
+        #     if hasattr(error, 'traceback'):
+        #         original_error += f"{error.traceback}\n"
+        #     return TEMPLATE_404.format(title="404 Page not found", message=message,
+        #                                error=original_error,
+        #                                routes="\n".join(
+        #                                    f"<li><code>{r!r}</code>: <code>{func}</code></li>" for r, func in
+        #                                    self.original_routes))
 
-        # def handle_500(error): # type: (bottle.HTTPError) -> str
-        def handle_500(error): # type: (Any) -> str
-            """
-            This is the default handler for HTTP 500 errors. It renders a custom error page
-            that displays a message indicating an internal server error occurred, and provides
-            a link to return to the index page. along with some additional error details.
-            """
-            message = "<p>Sorry, the requested URL <code>{url}</code> caused an error.</p>"#.format(url=request.url)
-            message += "\n<p>You might want to return to the <a href='/'>index</a> page.</p>"
-            original_error = f"{error.body}\n"
-            if hasattr(error, 'traceback'):
-                original_error += f"{error.traceback}\n"
-            return TEMPLATE_500.format(title="500 Internal Server Error",
-                                       message=message,
-                                       error=original_error,
-                                       routes="\n".join(
-                                           f"<li><code>{r!r}</code>: <code>{func}</code></li>" for r, func in
-                                           self.original_routes))
+        # TODO: Use this for DrafterErrors
+        # def handle_500(error): # type: (Any) -> str
+        #     """
+        #     This is the default handler for HTTP 500 errors. It renders a custom error page
+        #     that displays a message indicating an internal server error occurred, and provides
+        #     a link to return to the index page. along with some additional error details.
+        #     """
+        #     message = "<p>Sorry, the requested URL <code>{url}</code> caused an error.</p>"#.format(url=request.url)
+        #     message += "\n<p>You might want to return to the <a href='/'>index</a> page.</p>"
+        #     original_error = f"{error.body}\n"
+        #     if hasattr(error, 'traceback'):
+        #         original_error += f"{error.traceback}\n"
+        #     return TEMPLATE_500.format(title="500 Internal Server Error",
+        #                                message=message,
+        #                                error=original_error,
+        #                                routes="\n".join(
+        #                                    f"<li><code>{r!r}</code>: <code>{func}</code></li>" for r, func in
+        #                                    self.original_routes))
 
         # self.app.error(404)(handle_404)
         # self.app.error(500)(handle_500)
@@ -414,7 +414,7 @@ class Server:
         if not self.routes:
             raise ValueError("No routes have been defined.\nDid you remember the @route decorator?")
         # self.app.route("/--reset", 'GET', self.reset)
-        self.routes["/--reset"] = lambda state, page_history: self.reset()
+        self.routes["/--reset"] = lambda *_: self.reset() # *_ is state, page_history
         # If not skulpt, then allow them to test the deployment
         # if not self.configuration.skulpt:
         #     self.app.route("/--test-deployment", 'GET', self.test_deployment)
@@ -540,8 +540,7 @@ class Server:
             # self.routes[f"/{self.configuration.deploy_image_path}/<path:path>"] = lambda state, path: self.serve_image(path)
             pass
 
-    # def serve_image(self, path): # type: (str) -> bottle.HTTPResponse
-    def serve_image(self, path): # type: (str) -> Any
+    def serve_image(self, path: str) -> Any: # Should probably produce a string, maybe?
         """
         Serves an image file located in the specified directory with the MIME type
         `image/png`. The method retrieves the image from the path provided, using
@@ -626,7 +625,8 @@ class Server:
                 return val
             if hasattr(expected_type, '__origin__'):
                 # TODO: Ignoring the element type for now, but should really handle that properly
-                expected_type = expected_type.__origin__
+                expected_type = cast(type,
+                                     expected_type.__origin__) # type: ignore
             if not isinstance(val, expected_type):
                 try:
                     target_type = expected_types[param]
@@ -637,7 +637,7 @@ class Server:
                         from_name = type(val).__name__
                         to_name = expected_types[param].__name__
                     except:
-                        from_name = repr(type(val))
+                        from_name = repr(cast(Any, type(val)))
                         to_name = repr(expected_types[param])
                     raise ValueError(
                         f"Could not convert {param} ({val!r}) from {from_name} to {to_name}\n") from e
@@ -668,7 +668,9 @@ class Server:
                 args, kwargs, arguments, button_pressed = self.prepare_args(original_function, args, kwargs)
             except Exception as e:
                 self.make_error_page("Error preparing arguments for page", e, original_function)
+                assert False # unreachable
                 # return None
+
             # Actually start building up the page
             visiting_page = VisitedPage(original_function.__name__, original_function, arguments, "Creating Page", button_pressed)
             # self._page_history.append((visiting_page, original_state))
@@ -682,6 +684,8 @@ class Server:
                                       f"  Button Pressed: {button_pressed!r}\n"
                                       f"  Function Signature: {inspect.signature(original_function)}")
                 self.make_error_page("Error creating page", e, original_function, additional_details)
+                assert False # unreachable
+
             visiting_page.update("Verifying Page Result", original_page_content=page)
             self.verify_page_result(page, original_function)
             if False:
@@ -690,7 +694,9 @@ class Server:
                 page.verify_content(self)
             except Exception as e:
                 self.make_error_page("Error verifying content", e, original_function)
+                assert False # unreachable
                 # return None
+
             self._state_history.append(page.state)
             self._state = page.state
             visiting_page.update("Rendering Page Content")
@@ -698,7 +704,9 @@ class Server:
                 content = page.render_content(self.dump_state(), self.configuration)
             except Exception as e:
                 self.make_error_page("Error rendering content", e, original_function)
+                assert False # unreachable
                 # return None
+
             visiting_page.finish("Finished Page Load")
             if self.configuration.debug:
                 content = content + self.make_debug_page()
@@ -734,53 +742,54 @@ class Server:
         :return: Does not return any value as it raises an HTTP 500 error with the formatted message.
         :rtype: None
         """
-        message = ""
-        if page is None:
-            message = (f"The server did not return a Page object from {original_function}.\n"
-                       f"Instead, it returned None (which happens by default when you do not return anything else).\n"
-                       f"Make sure you have a proper return statement for every branch!")
-        elif isinstance(page, str):
-            message = (
-                f"The server did not return a Page() object from {original_function}. Instead, it returned a string:\n"
-                f"  {page!r}\n"
-                f"Make sure you are returning a Page object with the new state and a list of strings!")
-        elif isinstance(page, list):
-            message = (
-                f"The server did not return a Page() object from {original_function}. Instead, it returned a list:\n"
-                f" {page!r}\n"
-                f"Make sure you return a Page object with the new state and the list of strings, not just the list of strings.")
-        elif not isinstance(page, Page):
-            message = (f"The server did not return a Page() object from {original_function}. Instead, it returned:\n"
-                       f" {page!r}\n"
-                       f"Make sure you return a Page object with the new state and the list of strings.")
-        else:
+        # message = ""
+        # if page is None:
+        #     message = (f"The server did not return a Page object from {original_function}.\n"
+        #                f"Instead, it returned None (which happens by default when you do not return anything else).\n"
+        #                f"Make sure you have a proper return statement for every branch!")
+        # elif isinstance(page, str):
+        #     message = (
+        #         f"The server did not return a Page() object from {original_function}. Instead, it returned a string:\n"
+        #         f"  {page!r}\n"
+        #         f"Make sure you are returning a Page object with the new state and a list of strings!")
+        # elif isinstance(page, list):
+        #     message = (
+        #         f"The server did not return a Page() object from {original_function}. Instead, it returned a list:\n"
+        #         f" {page!r}\n"
+        #         f"Make sure you return a Page object with the new state and the list of strings, not just the list of strings.")
+        # elif not isinstance(page, Page):
+        #     message = (f"The server did not return a Page() object from {original_function}. Instead, it returned:\n"
+        #                f" {page!r}\n"
+        #                f"Make sure you return a Page object with the new state and the list of strings.")
+        # else:
+        if True:
             self.verify_page_state_history(page, original_function)
             if False:
                 pass # return verification_status
-            elif isinstance(page.content, str):
-                message = (f"The server did not return a valid Page() object from {original_function}.\n"
-                           f"Instead of a list of strings or content objects, the content field was a string:\n"
-                           f" {page.content!r}\n"
-                           f"Make sure you return a Page object with the new state and the list of strings/content objects.")
-            elif not isinstance(page.content, list):
-                message = (
-                    f"The server did not return a valid Page() object from {original_function}.\n"
-                    f"Instead of a list of strings or content objects, the content field was:\n"
-                    f" {page.content!r}\n"
-                    f"Make sure you return a Page object with the new state and the list of strings/content objects.")
-            else:
-                for item in page.content:
-                    if not isinstance(item, (str, PageContent)):
-                        message = (
-                            f"The server did not return a valid Page() object from {original_function}.\n"
-                            f"Instead of a list of strings or content objects, the content field was:\n"
-                            f" {page.content!r}\n"
-                            f"One of those items is not a string or a content object. Instead, it was:\n"
-                            f" {item!r}\n"
-                            f"Make sure you return a Page object with the new state and the list of strings/content objects.")
+            # elif isinstance(page.content, str):
+            #     message = (f"The server did not return a valid Page() object from {original_function}.\n"
+            #                f"Instead of a list of strings or content objects, the content field was a string:\n"
+            #                f" {page.content!r}\n"
+            #                f"Make sure you return a Page object with the new state and the list of strings/content objects.")
+            # elif not isinstance(page.content, list):
+            #     message = (
+            #         f"The server did not return a valid Page() object from {original_function}.\n"
+            #         f"Instead of a list of strings or content objects, the content field was:\n"
+            #         f" {page.content!r}\n"
+            #         f"Make sure you return a Page object with the new state and the list of strings/content objects.")
+            # else:
+                # for item in page.content:
+                    # if not isinstance(item, (str, PageContent)):
+                    #     message = (
+                    #         f"The server did not return a valid Page() object from {original_function}.\n"
+                    #         f"Instead of a list of strings or content objects, the content field was:\n"
+                    #         f" {page.content!r}\n"
+                    #         f"One of those items is not a string or a content object. Instead, it was:\n"
+                    #         f" {item!r}\n"
+                    #         f"Make sure you return a Page object with the new state and the list of strings/content objects.")
 
-        if message:
-            self.make_error_page("Error after creating page", ValueError(message), original_function)
+        # if message:
+        #     self.make_error_page("Error after creating page", ValueError(message), original_function)
         # return None
 
     def verify_page_state_history(self, page: Page, original_function: Callable[..., Page]) -> None:
@@ -837,11 +846,11 @@ class Server:
             possible_themes = ", ".join(get_themes()) # type: ignore
             raise ValueError(f"Unknown style {style}. Please choose from {possible_themes}, or add a custom style tag with add_website_header.")
 
-        scripts = "\n".join([*global_files.scripts.values(), *style_files.scripts.values()])
-        styles = "\n".join([*global_files.styles.values(), *style_files.styles.values()])
-        credit = "\n".join(c for c in [
-            style_files.metadata.get('credit', ''),
-            global_files.metadata.get('credit', ''),
+        scripts = "\n".join([*global_files.scripts.values(), *style_files.scripts.values()]) # type: ignore
+        styles = "\n".join([*global_files.styles.values(), *style_files.styles.values()]) # type: ignore
+        credit = "\n".join(c for c in [ # type: ignore
+            style_files.metadata.get('credit', ''), # type: ignore
+            global_files.metadata.get('credit', ''), # type: ignore
         ] if c)
         if self.configuration.additional_header_content:
             header_content = "\n".join(self.configuration.additional_header_content)
@@ -981,7 +990,7 @@ class Server:
         if not success: return fname_or_error, success
         student_main_file = fname_or_error
 
-        bundled_js, skipped, added = bundle_files_into_js(
+        bundled_js, *_ = bundle_files_into_js( # *_ is skipped, added
             student_main_file, os.path.dirname(student_main_file),
             allowed_extensions, js_obj_name, sep, pref
         )
@@ -1033,6 +1042,48 @@ class Server:
             cdn_drafter_setup=self.configuration.cdn_drafter_setup
         )
 
+    def render_route(self, route: str, state_str: str, page_history_str: str, args: str, kwargs: str) -> tuple[str, str, str]:
+        """
+        Renders the route specified with the state and arguments specified. 
+        Returns the site content and new state.
+
+        :param route: The name of the route to render.
+        :type route: str
+        :param state_str: The current state of the website, probably from localStorage.
+        :type state_str: str
+        :param page_history_str: The history of the website, probably from localStorage.
+        :type page_history_str: str
+        :param args: The JSONified positional arguments.
+        :type args: str
+        :param kwargs: The JSONified keyword arguments.
+        :type kwargs: str
+        :return: the text content of the site, state, and history.
+        :rtype: tuple[str, str, str]
+        """
+        if self._initial_state_type is None:
+            raise ValueError("You can't render a route if you haven't setup!")
+        state = self.load_from_state(state_str, self._initial_state_type)
+        self._state = state
+        page_history = self.destringify_history(page_history_str)
+        self._page_history = page_history
+        py_args = json.loads(base64.b64decode(bytes(args, 'utf-8')).decode('utf-8'))
+        py_kwargs = json.loads(base64.b64decode(bytes(kwargs, 'utf-8')).decode('utf-8'))
+
+        try:
+            page = self.routes[route](state, page_history, *py_args, **py_kwargs)
+        except DrafterError as e:
+            tb = html.escape(traceback.format_exc())
+            return f"<h1>Unknown Error:</h1>\n<pre>{e}</pre>\n<pre>{tb}</pre>", state_str, self.stringify_history(self._page_history)
+        except Exception as e:
+            # tb = html.escape("<br>".join(traceback.format_exc().split("\n")))
+            tb = html.escape(traceback.format_exc())
+            return f"<h1>Unknown Error:</h1>\n<pre>{e}</pre>\n<pre>{tb}</pre>", state_str, self.stringify_history(self._page_history)
+
+        # print(1009, server._page_history[0][0])
+        # print(1010, json.dumps(server._page_history[0][0]))
+
+        return page, self.dump_state(), self.stringify_history(self._page_history)
+
 
 @dataclass
 class DrafterError(BaseException):
@@ -1053,7 +1104,7 @@ def set_main_server(server: Server) -> None:
     :return: None
     """
     global MAIN_SERVER
-    MAIN_SERVER = server
+    MAIN_SERVER = server # type: ignore reportConstantRedefinition
 
 def get_main_server() -> Server:
     """
@@ -1109,30 +1160,7 @@ def render_route(route: str, state_str: str, page_history_str: str, args: str, k
     :return: the text content of the site, state, and history.
     :rtype: tuple[str, str, str]
     """
-    server = get_main_server()
-    if server._initial_state_type is None:
-        raise ValueError("You can't render a route if you haven't setup!")
-    state = server.load_from_state(state_str, server._initial_state_type)
-    server._state = state
-    page_history = server.destringify_history(page_history_str)
-    server._page_history = page_history
-    py_args = json.loads(base64.b64decode(bytes(args, 'utf-8')).decode('utf-8'))
-    py_kwargs = json.loads(base64.b64decode(bytes(kwargs, 'utf-8')).decode('utf-8'))
-
-    try:
-        page = server.routes[route](state, page_history, *py_args, **py_kwargs)
-    except DrafterError as e:
-        tb = html.escape(traceback.format_exc())
-        return f"<h1>Unknown Error:</h1>\n<pre>{e}</pre>\n<pre>{tb}</pre>", state_str, server.stringify_history(server._page_history)
-    except Exception as e:
-        # tb = html.escape("<br>".join(traceback.format_exc().split("\n")))
-        tb = html.escape(traceback.format_exc())
-        return f"<h1>Unknown Error:</h1>\n<pre>{e}</pre>\n<pre>{tb}</pre>", state_str, server.stringify_history(server._page_history)
-
-    # print(1009, server._page_history[0][0])
-    # print(1010, json.dumps(server._page_history[0][0]))
-
-    return page, server.dump_state(), server.stringify_history(server._page_history)
+    return get_main_server().render_route(route, state_str, page_history_str, args, kwargs)
 
 
 def start_server(initial_state: Any = None, server: Server = MAIN_SERVER, skip: bool = False, **kwargs: Any) -> None:

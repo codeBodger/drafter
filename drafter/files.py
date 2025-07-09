@@ -250,8 +250,8 @@ def seek_file_by_line(line: str, missing_value: Optional[str] = None) -> Optiona
         from traceback import extract_stack
         trace = extract_stack()
         for data in trace:
-            if not data[3]: continue
-            if data[3].strip().startswith(line):
+            d = data[3]
+            if d and d.strip().startswith(line):
                 return data[0]
         return missing_value
     except Exception as e:

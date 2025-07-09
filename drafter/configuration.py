@@ -90,8 +90,8 @@ class ServerConfiguration:
 
     # Page configuration
     style: str = 'skeleton'
-    additional_header_content: List[str] = field(default_factory=list)
-    additional_css_content: List[str] = field(default_factory=list)
+    additional_header_content: List[str] = field(default_factory=list[str])
+    additional_css_content: List[str] = field(default_factory=list[str])
     src_image_folder: str = ''
     save_uploaded_files: bool = not skulpt
     deploy_image_path: str = 'website' if skulpt else 'images'
@@ -111,7 +111,7 @@ class ServerConfiguration:
     def add_config_packages(self, *args: str) -> None:
         self._config_packages.extend(args)
     
-    _config_files: dict[str, str] = field(default_factory=dict)
+    _config_files: dict[str, str] = field(default_factory=dict[str, str])
     def config_files(self, sep: Optional[str] = None) -> str:
         return (sep or ",\n").join([f'"{src}": "{dest}"' for src, dest in self._config_files.items()])
     def add_config_files(self, *args: str) -> None:
