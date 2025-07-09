@@ -77,6 +77,26 @@ def add_website_css(selector: str, css: Optional[str] = None) -> None:
         MAIN_SERVER.configuration.additional_css_content.append(f"{selector} {{{css}}}\n")
 
 
+def add_packages(*args: str) -> None:
+    """
+    Adds additional packages to the PyScript configuration. This is necessary if atypical
+    packages are used in the application.
+
+    :param *args: All of the package names.
+    """
+    MAIN_SERVER.configuration.add_config_packages(*args)
+
+
+def add_files(*args: str) -> None:
+    """
+    Adds additional files to the PyScript configuration.
+    TBD when this might be necessary.
+
+    :param *args: All of the file names.
+    """
+    MAIN_SERVER.configuration.add_config_files(*(f"./{f}" for f in args))
+
+
 def deploy_site(image_folder: str = 'images') -> None:
     """
     Deploys the website with the given image folder. This will set the production

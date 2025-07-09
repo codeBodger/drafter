@@ -30,7 +30,7 @@ import logging
 logger = logging.getLogger('drafter')
 
 
-DEFAULT_ALLOWED_EXTENSIONS = ('py', 'js', 'css', 'txt', 'json', 'csv', 'html', 'md')
+DEFAULT_ALLOWED_EXTENSIONS: tuple[str, ...] = ('py', 'js', 'css', 'txt', 'json', 'csv', 'html', 'md')
 
 def get_files_for_bundling(
         main_file: str, root_path: str,
@@ -61,6 +61,7 @@ def get_files_for_bundling(
     added_files: list[str] = []
     all_files: dict[str, str] = {}
     for root, dirs, files in os.walk(root_path):
+        dirs[:] = [d for d in dirs if not d[0] == '.'] # ignore hidden dirs
         for file in files:
             is_main = os.path.join(root_path, file) == main_file
             path = pathlib.Path(os.path.join(root, file)).relative_to(root_path)
@@ -1016,17 +1017,21 @@ class Server:
             CDN configurations.
         :rtype: str
         """
-        PYTHON_SOURCE_OBJECT_NAME = "pythonSource" if not self.configuration.debug else None
-        pref = "src/lib/" if self.configuration.debug else None
-        js_or_err, success = self.bundled_js_or_error({"py"}, PYTHON_SOURCE_OBJECT_NAME, "            ", pref)
-        if not success: return js_or_err
-        else: bundled_js = js_or_err
-        return TEMPLATE_INDEX_HTML.format(python_source_obj_name=PYTHON_SOURCE_OBJECT_NAME,
-                                          python_source=bundled_js,
-                                          cdn_skulpt=self.configuration.cdn_skulpt,
-                                          cdn_skulpt_std=self.configuration.cdn_skulpt_std,
-                                          cdn_skulpt_drafter=self.configuration.cdn_skulpt_drafter,
-                                          cdn_drafter_setup=self.configuration.cdn_drafter_setup)
+        fname_or_error, success = self.student_main_file_or_error()
+        if not success: return fname_or_error
+        student_main_file = fname_or_error
+        bundled_py = bundle_files_into_py(
+            student_main_file, os.path.dirname(student_main_file), 
+            set(DEFAULT_ALLOWED_EXTENSIONS).difference({"html"}), indent=3
+        )
+        return TEMPLATE_INDEX_HTML.format(
+            source=bundled_py,
+            cdn_pyscript_css=self.configuration.cdn_pyscript_css,
+            cdn_pyscript_core=self.configuration.cdn_pyscript_core,
+            config_packages=self.configuration.config_packages(),
+            config_files=self.configuration.config_files(",\n                    "),
+            cdn_drafter_setup=self.configuration.cdn_drafter_setup
+        )
 
 
 @dataclass
@@ -1153,7 +1158,7 @@ def start_server(initial_state: Any = None, server: Server = MAIN_SERVER, skip: 
         logger.info("Skipping server setup and execution")
         return
 
-    if server.configuration.skulpt:
+    if server.configuration.skulpt or server.configuration.pyscript:
         server.setup(initial_state)
         server.run(**kwargs) # really just an extension of setup to handle config
         # global SITE

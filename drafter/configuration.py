@@ -6,7 +6,7 @@ Download/upload state button
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List, Optional
 import os
 
 from drafter.setup import DEFAULT_BACKEND
@@ -83,9 +83,10 @@ class ServerConfiguration:
     skip: bool = bool(os.environ.get('DRAFTER_SKIP', False))
 
     # Website configuration
-    title: str = "Drafter Website"
+    title: str = "Drafter Website" # TODO: Actually use the title
     framed: bool = True
     skulpt: bool = bool(os.environ.get('DRAFTER_SKULPT', False))
+    pyscript: bool = bool(os.environ.get('DRAFTER_PYSCRIPT', False))
 
     # Page configuration
     style: str = 'skeleton'
@@ -100,3 +101,18 @@ class ServerConfiguration:
     cdn_skulpt_std: str = os.environ.get("DRAFTER_CDN_SKULPT_STD", "https://drafter-edu.github.io/drafter-cdn/skulpt/skulpt-stdlib.js")
     cdn_skulpt_drafter: str = os.environ.get("DRAFTER_CDN_SKULPT_DRAFTER", "https://drafter-edu.github.io/drafter-cdn/skulpt/skulpt-drafter.js")
     cdn_drafter_setup: str = os.environ.get("DRAFTER_CDN_SETUP", "https://drafter-edu.github.io/drafter-cdn/skulpt/drafter-setup.js")
+
+    cdn_pyscript_core: str = os.environ.get("DRAFTER_CDN_PYSCRIPT_CORE", "https://pyscript.net/releases/2025.7.2/core.js")
+    cdn_pyscript_css: str = os.environ.get("DRAFTER_CDN_PYSCRIPT_CSS", "https://pyscript.net/releases/2025.7.2/core.css")
+
+    _config_packages: list[str] = field(default_factory=["drafter", "pillow"].copy)
+    def config_packages(self) -> str:
+        return ", ".join([f'"{p}"' for p in self._config_packages])
+    def add_config_packages(self, *args: str) -> None:
+        self._config_packages.extend(args)
+    
+    _config_files: dict[str, str] = field(default_factory=dict)
+    def config_files(self, sep: Optional[str] = None) -> str:
+        return (sep or ",\n").join([f'"{src}": "{dest}"' for src, dest in self._config_files.items()])
+    def add_config_files(self, *args: str) -> None:
+        self._config_files.update([(f, f) for f in args])
