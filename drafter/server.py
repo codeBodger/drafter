@@ -98,7 +98,7 @@ def bundle_files_into_js(
         in the final JavaScript output. Defaults to a predefined tuple.
     :type allowed_extensions: set[str]
     :param js_obj_name: An optional alternative name for the JS object in which to store
-        the python source.
+        the collected files.
     :type js_obj_name: str
     :param sep: The separator between each JSified file line.
     :type sep: str
@@ -922,6 +922,26 @@ class Server:
                                    self.configuration)
         return content.generate()
 
+    def student_main_file_or_error(self) -> tuple[str, bool]:
+        """
+        This function searches for the entry point of the student's application
+        (identified by the "start_server" line in their main file). If the main file
+        cannot be located, it returns an error indicating this failure. Otherwise, it
+        returns the filename of the main file.
+
+        :return: A tuple containing:
+            - The main filename or error.
+            - Whether an error occured (so you know what the first item is).
+        :rtype: tuple[str, bool]
+        """
+        student_main_file = seek_file_by_line("start_server")
+        if student_main_file is None:
+            return TEMPLATE_500.format(title="500 Internal Server Error",
+                                       message="Could not find the student's main file.",
+                                       error="Could not find the student's main file.",
+                                       routes=""), False
+        return student_main_file, True
+
     def bundled_js_or_error(
             self,
             allowed_extensions: Optional[set[str]] = None,
@@ -956,12 +976,10 @@ class Server:
         :rtype: tuple[str, bool]
         """
         # Bundle up the necessary files, including the source code
-        student_main_file = seek_file_by_line("start_server")
-        if student_main_file is None:
-            return TEMPLATE_500.format(title="500 Internal Server Error",
-                                       message="Could not find the student's main file.",
-                                       error="Could not find the student's main file.",
-                                       routes=""), False
+        fname_or_error, success = self.student_main_file_or_error()
+        if not success: return fname_or_error, success
+        student_main_file = fname_or_error
+
         bundled_js, skipped, added = bundle_files_into_js(
             student_main_file, os.path.dirname(student_main_file),
             allowed_extensions, js_obj_name, sep, pref
