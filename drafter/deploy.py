@@ -21,10 +21,15 @@ def show_debug_information() -> None:
 def set_website_title(title: str) -> None:
     """
     Sets the title of the website, as it appears in the browser tab.
+    I.e. sets the configuration to set the index.html.
+    Also sets pyscript.document.title if using pyscript.
 
     :param title: The title of the website.
     """
     MAIN_SERVER.configuration.title = title
+    if MAIN_SERVER.configuration.pyscript:
+        from pyscript import document # type: ignore
+        document.title = title # type: ignore
 
 
 def set_website_framed(framed: bool) -> None:

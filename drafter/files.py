@@ -289,7 +289,7 @@ TEMPLATE_INDEX_HTML = """<!DOCTYPE html>
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Example</title>
+        <title>{site_title}</title>
         <link rel="stylesheet" href="{cdn_pyscript_css}">
         <script type="module" src="{cdn_pyscript_core}"></script>
 
@@ -312,14 +312,14 @@ TEMPLATE_INDEX_HTML = """<!DOCTYPE html>
             {source}
 
             import os
-            os.environ.setdefault("DRAFTER_PYSCRIPT", "True")
+            os.environ.setdefault("DRAFTER_PYSCRIPT", "True") # ensure correct config
 
             import main
             from drafter import get_main_server
             from pyscript import document
 
             server = get_main_server()
-            document.getElementById("website").innerHTML = \
+            document.getElementById("website").innerHTML = \\
                 server.routes['/'](server._state, server._page_history)
         </script>
     </body>

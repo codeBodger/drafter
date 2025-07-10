@@ -1034,6 +1034,7 @@ class Server:
             set(DEFAULT_ALLOWED_EXTENSIONS).difference({"html"}), indent=3
         )
         return TEMPLATE_INDEX_HTML.format(
+            title=self.configuration.title,
             source=bundled_py,
             cdn_pyscript_css=self.configuration.cdn_pyscript_css,
             cdn_pyscript_core=self.configuration.cdn_pyscript_core,
@@ -1179,9 +1180,9 @@ def start_server(initial_state: Any = None, server: Server = MAIN_SERVER, skip: 
 
     :Keyword Arguments:
         * *port* (``int``) --
-          The port to run the server on. Defaults to ``8080``
+          The port to run the server on. Defaults to the server configuration, which defaults to ``8080``
     """
-    kwargs["port"] = kwargs.get("port", 8080)
+    kwargs["port"] = kwargs.get("port", server.configuration.port)
     if server.configuration.skip or skip:
         logger.info("Skipping server setup and execution")
         return

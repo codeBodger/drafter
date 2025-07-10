@@ -83,7 +83,7 @@ class ServerConfiguration:
     skip: bool = bool(os.environ.get('DRAFTER_SKIP', False))
 
     # Website configuration
-    title: str = "Drafter Website" # TODO: Actually use the title
+    title: str = "Drafter Website"
     framed: bool = True
     skulpt: bool = bool(os.environ.get('DRAFTER_SKULPT', False))
     pyscript: bool = bool(os.environ.get('DRAFTER_PYSCRIPT', False))
@@ -93,7 +93,7 @@ class ServerConfiguration:
     additional_header_content: List[str] = field(default_factory=list[str])
     additional_css_content: List[str] = field(default_factory=list[str])
     src_image_folder: str = ''
-    save_uploaded_files: bool = not skulpt
+    save_uploaded_files: bool = not skulpt # TODO: image stuff for pyscript and skulpt
     deploy_image_path: str = 'website' if skulpt else 'images'
 
     # Test Deployment CDN configurations
