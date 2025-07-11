@@ -1034,7 +1034,7 @@ class Server:
             set(DEFAULT_ALLOWED_EXTENSIONS).difference({"html"}), indent=3
         )
         return TEMPLATE_INDEX_HTML.format(
-            title=self.configuration.title,
+            site_title=self.configuration.title,
             source=bundled_py,
             cdn_pyscript_css=self.configuration.cdn_pyscript_css,
             cdn_pyscript_core=self.configuration.cdn_pyscript_core,
