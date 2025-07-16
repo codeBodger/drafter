@@ -1,5 +1,6 @@
 import base64
 import html
+from itertools import zip_longest
 import os
 import traceback
 from dataclasses import dataclass, asdict, replace, field, fields
@@ -415,8 +416,8 @@ class Server:
         expected_parameters = list(signature_parameters.keys())[1:]
         show_names = {param.name: (param.kind in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.VAR_KEYWORD))
                       for param in signature_parameters.values()}
-        has_kwargs_params = bool(sum(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature_parameters_no_state))
-        has_args_params = bool(sum(param.kind == inspect.Parameter.VAR_POSITIONAL for param in signature_parameters_no_state))
+        var_pos_param = [*(param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.VAR_POSITIONAL), ""][0]
+        var_kwd_param = [*(param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.VAR_KEYWORD), ""][0]
         expected_pos_params = [param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.POSITIONAL_ONLY]
         expected_pkw_params = [param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD]
         expected_kwd_params = [param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.KEYWORD_ONLY]
@@ -430,7 +431,7 @@ class Server:
         #     args.insert(0, self._state)
 
         # Check if there are too many arguments
-        if len(expected_pos_params) < len(args) and not has_args_params:
+        if len(expected_pos_params) < len(args) and not var_pos_param:
             self.flash_warning(
                 f"The {original_function.__name__} function expected at most {len(expected_pos_params)} "
                 f"positional arguments, but {len(args)} were provided.\n"
@@ -443,7 +444,7 @@ class Server:
             if expected_pkw_params[0] == used_pos_param:
                 expected_pkw_params = expected_pkw_params[1:]
         expected_kwd_params = [*expected_pkw_params, *expected_kwd_params]
-        if len(expected_kwd_params) < len(kwargs) and not has_kwargs_params:
+        if len(expected_kwd_params) < len(kwargs) and not var_kwd_param:
             self.flash_warning(
                 f"The {original_function.__name__} function expected at most {len(expected_kwd_params)} "
                 f"remaining positional arguments, but {len(kwargs)} were provided.\n"
@@ -457,7 +458,7 @@ class Server:
             )
             while len(expected_kwd_params) < len(kwargs):
                 kwargs.pop(list(kwargs.keys())[-1])
-        if len(expected_parameters) < len(args) + len(kwargs) and not has_args_params and not has_kwargs_params:
+        if len(expected_parameters) < len(args) + len(kwargs) and not var_pos_param and not var_kwd_param:
             raise ValueError("I really thought this was impossible!")
             self.flash_warning(
                 f"The {original_function.__name__} function expected {len(expected_parameters)} parameters, but {len(args) + len(kwargs)} were provided.\n"
@@ -472,13 +473,13 @@ class Server:
         # TODO: Handle types of variable arguments (i.e. *args and **kwargs)
         expected_types = {name: p.annotation for name, p in
                           inspect.signature(original_function).parameters.items()}
-        args = tuple(self.convert_parameter(param, val, expected_types)
-                for param, val in zip(used_pos_params, args))
-        kwargs = {param: self.convert_parameter(param, val, expected_types)
+        args = tuple(self.convert_parameter(param, val, expected_types, var_pos_param)
+                for param, val in zip_longest(used_pos_params, args, fillvalue=""))
+        kwargs = {param: self.convert_parameter(param, val, expected_types, var_kwd_param)
                   for param, val in kwargs.items()}
         # Verify all arguments are in expected_parameters
         for key, value in kwargs.items():
-            if key not in expected_parameters and not has_kwargs_params:
+            if key not in expected_parameters and not var_kwd_param:
                 raise ValueError(
                     f"Unexpected parameter {key}={value!r} in {original_function.__name__}. "
                     f"Expected parameters: {expected_parameters}. "
@@ -570,7 +571,7 @@ class Server:
         #             raise ValueError(f"Could not open image file {value.filename} as a PIL.Image. Perhaps the file is not an image, or the parameter type is inappropriate?") from e
         return target_type(value)
 
-    def convert_parameter(self, param: str, val: Any, expected_types: dict[str, type]) -> Any:
+    def convert_parameter(self, param: str, val: Any, expected_types: dict[str, type], var_arg_name: str) -> Any:
         """
         Converts a given parameter value to a specified target type if possible, based
         on the expected types provided. Records successful conversions, unchanged
@@ -585,12 +586,17 @@ class Server:
             type. If a parameter does not require conversion, its value is set to
             `inspect.Parameter.empty`.
         :type expected_types: dict
+        :param var_arg_name: The name of the variable-length argument (either pos or kw).
+            If `param` isn't in `expected_types`, it defaults to this value.
+        :type var_arg_name: str
         :return: The converted value of the parameter if a conversion is successful;
             otherwise, the original value of the parameter.
         :rtype: Any
         :raises ValueError: If the value cannot be converted to its specified expected
             type, providing detailed information about the attempted conversion.
         """
+        if param not in expected_types: param = var_arg_name
+
         if param in expected_types:
             expected_type = expected_types[param]
             if expected_type == inspect.Parameter.empty:
