@@ -411,10 +411,17 @@ class Server:
 
         signature_parameters = inspect.signature(original_function).parameters
         # print(signature_parameters.get('kwargs', signature_parameters['state']).annotation)
+        signature_parameters_no_state = list(signature_parameters.values())[1:]
         expected_parameters = list(signature_parameters.keys())[1:]
         show_names = {param.name: (param.kind in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.VAR_KEYWORD))
                       for param in signature_parameters.values()}
-        has_kwargs_params = bool(sum(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature_parameters.values()))
+        has_kwargs_params = bool(sum(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature_parameters_no_state))
+        has_args_params = bool(sum(param.kind == inspect.Parameter.VAR_POSITIONAL for param in signature_parameters_no_state))
+        expected_pos_params = [param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.POSITIONAL_ONLY]
+        expected_pkw_params = [param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD]
+        expected_kwd_params = [param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.KEYWORD_ONLY]
+
+        expected_pos_params = [*expected_pos_params, *expected_pkw_params]
 
         # kwargs = remap_hidden_form_parameters(kwargs, button_pressed)
         # Insert state into the beginning of args
@@ -423,20 +430,50 @@ class Server:
         #     args.insert(0, self._state)
 
         # Check if there are too many arguments
-        if len(expected_parameters) < len(args) + len(kwargs):
+        if len(expected_pos_params) < len(args) and not has_args_params:
+            self.flash_warning(
+                f"The {original_function.__name__} function expected at most {len(expected_pos_params)} "
+                f"positional arguments, but {len(args)} were provided.\n"
+                f"  Expected: {', '.join(expected_pos_params)}\n"
+                f"  But got: {repr(args)}"
+            )
+            args = args[:len(expected_pos_params)]
+        used_pos_params = expected_pos_params[:len(args)]
+        for used_pos_param in used_pos_params:
+            if expected_pkw_params[0] == used_pos_param:
+                expected_pkw_params = expected_pkw_params[1:]
+        expected_kwd_params = [*expected_pkw_params, *expected_kwd_params]
+        if len(expected_kwd_params) < len(kwargs) and not has_kwargs_params:
+            self.flash_warning(
+                f"The {original_function.__name__} function expected at most {len(expected_kwd_params)} "
+                f"remaining positional arguments, but {len(kwargs)} were provided.\n"
+                f"  Expected: {', '.join(expected_kwd_params)}\n"
+                f"  But got: {repr(kwargs)}"
+                + (
+                    f"\n  After using {len(used_pos_params)} positional arguments:\n"
+                    f"  For: {', '.join(used_pos_params)}\n"
+                    f"  Having gotten: {repr(args)}"
+                ) if len(used_pos_params) else ""
+            )
+            while len(expected_kwd_params) < len(kwargs):
+                kwargs.pop(list(kwargs.keys())[-1])
+        if len(expected_parameters) < len(args) + len(kwargs) and not has_args_params and not has_kwargs_params:
+            raise ValueError("I really thought this was impossible!")
             self.flash_warning(
                 f"The {original_function.__name__} function expected {len(expected_parameters)} parameters, but {len(args) + len(kwargs)} were provided.\n"
                 f"  Expected: {', '.join(expected_parameters)}\n"
-                f"  But got: {repr(args)} and {repr(kwargs)}")
+                f"  But got: {repr(args)} and {repr(kwargs)}"
+            )
             # TODO: Select parameters to keep more intelligently by inspecting names
             args = args[:len(expected_parameters)]
             while len(expected_parameters) < len(args) + len(kwargs) and kwargs:
                 kwargs.pop(list(kwargs.keys())[-1])
         # Type conversion if required
+        # TODO: Handle types of variable arguments (i.e. *args and **kwargs)
         expected_types = {name: p.annotation for name, p in
                           inspect.signature(original_function).parameters.items()}
         args = tuple(self.convert_parameter(param, val, expected_types)
-                for param, val in zip(expected_parameters, args))
+                for param, val in zip(used_pos_params, args))
         kwargs = {param: self.convert_parameter(param, val, expected_types)
                   for param, val in kwargs.items()}
         # Verify all arguments are in expected_parameters
