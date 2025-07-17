@@ -1,9 +1,14 @@
-from typing import Union, Callable, Optional, TYPE_CHECKING
+from typing import Union, Callable, Optional, TYPE_CHECKING, overload
 from drafter.server import Server, get_main_server
 
 if TYPE_CHECKING:
     from drafter.page import Page
 
+
+@overload
+def route(url: Callable[..., 'Page'], server: Optional[Server] = None) -> Callable[..., 'Page']: ...
+@overload
+def route(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[..., Callable[..., 'Page']]: ...
 
 def route(url: Union[Callable[..., 'Page'], str, None] = None, server: Optional[Server] = None) -> Callable[..., Union['Page', Callable[..., 'Page']]]:
     """
