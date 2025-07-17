@@ -839,26 +839,6 @@ class Server:
 
 
     def make_error_page(self, title: str, error: Exception, original_function: Callable[..., Page], additional_details: str = "") -> None:
-        """
-        Generates and displays a detailed error page upon encountering an issue in the application.
-
-        This function formats a detailed error message by including the title of the error,
-        the original function's name where the error occurred, the original error's message, and
-        any additional details if provided. It also escapes potentially unsafe HTML characters
-        from the error details and traceback to improve security. The formatted message is then
-        displayed with an HTTP 500 Internal Server Error status.
-
-        :param title: A brief, descriptive title for the error (e.g., "Server Error").
-        :type title: str
-        :param error: The original error/exception that was encountered.
-        :type error: Exception
-        :param original_function: The function object where the error originated.
-        :type original_function: Callable
-        :param additional_details: Optional additional information or context about the error. Defaults to an empty string.
-        :type additional_details: str
-        :return: Does not return any value as it raises an HTTP 500 error with the formatted message.
-        :rtype: None
-        """
         # TODO: Make errors much prettier.
         raise DrafterError(title, error, original_function, additional_details)
 
@@ -985,18 +965,38 @@ class Server:
 
 @dataclass
 class DrafterError(BaseException):
+    """
+    Generates and displays a detailed error page upon encountering an issue in the application.
+
+    This class formats a detailed error message by including the title of the error,
+    the original function's name where the error occurred, the original error's message, and
+    any additional details if provided. It also escapes potentially unsafe HTML characters
+    from the error details and traceback to improve security. The formatted message is then
+    displayed to the user.
+
+    :param title: A brief, descriptive title for the error (e.g., "Server Error").
+    :type title: str
+    :param error: The original error/exception that was encountered.
+    :type error: Exception
+    :param original_function: The function object or name of the route being loaded
+        where the error originated.
+    :type original_function: Callable | str
+    :param additional_details: Optional additional information or context about the error. Defaults to an empty string.
+    :type additional_details: str
+    """
     title: str
     error: Exception
-    original_function: Optional[Callable[..., Page]] = None
+    original_function: Union[Callable[..., Any], str]
     additional_details: str = ""
 
     def __post_init__(self) -> None:
         self.tb = html.escape(traceback.format_exc())
 
     def __str__(self) -> str:
+        func_name = self.original_function.__name__ if callable(self.original_function) else self.original_function
         new_message = (
             f"<h1>{self.title}.</h1>\n"
-            f"<h2>Error in <code>{self.original_function.__name__}<code>:</h2>\n"
+            f"<h2>Error in <code>{func_name}<code>:</h2>\n"
             f"<pre>{html.escape(str(self.error))}</pre>\n\n\n"
             f"<pre>{self.tb}</pre>"
         )
@@ -1092,7 +1092,7 @@ def render_route(route: str, state_str: str, page_history_str: str, args: str, k
     except Exception as e:
         # tb = html.escape("<br>".join(traceback.format_exc().split("\n")))
         # tb = html.escape(traceback.format_exc())
-        err = DrafterError("Unknown Error", e)
+        err = DrafterError("Unknown Error", e, route)
         return str(err), state_str, server.stringify_history(server._page_history)
 
     # print(1009, server._page_history[0][0])
