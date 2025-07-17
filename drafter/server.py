@@ -860,14 +860,7 @@ class Server:
         :rtype: None
         """
         # TODO: Make errors much prettier.
-        tb = html.escape(traceback.format_exc())
-        new_message = (f"""{title}.\n"""
-                       f"""Error in {original_function.__name__}:\n"""
-                       f"""{html.escape(str(error))}\n\n\n{tb}""")
-        if additional_details:
-            new_message += f"\n\n\nAdditional Details:\n{additional_details}"
-        # abort(500, new_message)
-        raise DrafterError(500, new_message)
+        raise DrafterError(title, error, original_function, additional_details)
 
     def flash_warning(self, message: str) -> None:
         """
@@ -992,11 +985,25 @@ class Server:
 
 @dataclass
 class DrafterError(BaseException):
-    code: int = 500
-    text: str = "Unknown Error."
+    title: str
+    error: Exception
+    original_function: Optional[Callable[..., Page]] = None
+    additional_details: str = ""
+
+    def __post_init__(self) -> None:
+        self.tb = html.escape(traceback.format_exc())
 
     def __str__(self) -> str:
-        return f"<h1>Error Code: {self.code}</h1>\n<div>{self.text}</div>"
+        new_message = (
+            f"<h1>{self.title}.</h1>\n"
+            f"<h2>Error in <code>{self.original_function.__name__}<code>:</h2>\n"
+            f"<pre>{html.escape(str(self.error))}</pre>\n\n\n"
+            f"<pre>{self.tb}</pre>"
+        )
+        if self.additional_details:
+            new_message += ("\n\n\n<h2>Additional Details:</h2>\n"
+                           f"<pre>{self.additional_details}</pre>")
+        return new_message
 
 
 MAIN_SERVER = Server(_custom_name="MAIN_SERVER")
@@ -1081,12 +1088,12 @@ def render_route(route: str, state_str: str, page_history_str: str, args: str, k
     try:
         page = server.routes[route](state, page_history, *py_args, **py_kwargs)
     except DrafterError as e:
-        tb = html.escape(traceback.format_exc())
-        return f"<h1>Unknown Error:</h1>\n<pre>{e}</pre>\n<pre>{tb}</pre>", state_str, server.stringify_history(server._page_history)
+        return str(e), state_str, server.stringify_history(server._page_history)
     except Exception as e:
         # tb = html.escape("<br>".join(traceback.format_exc().split("\n")))
-        tb = html.escape(traceback.format_exc())
-        return f"<h1>Unknown Error:</h1>\n<pre>{e}</pre>\n<pre>{tb}</pre>", state_str, server.stringify_history(server._page_history)
+        # tb = html.escape(traceback.format_exc())
+        err = DrafterError("Unknown Error", e)
+        return str(err), state_str, server.stringify_history(server._page_history)
 
     # print(1009, server._page_history[0][0])
     # print(1010, json.dumps(server._page_history[0][0]))
