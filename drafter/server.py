@@ -644,8 +644,7 @@ class Server:
             try:
                 args, kwargs, arguments, button_pressed = self.prepare_args(original_function, args, kwargs)
             except Exception as e:
-                self.make_error_page("Error preparing arguments for page", e, original_function)
-                # return None
+                raise DrafterError("Error preparing arguments for page", e, original_function)
             # Actually start building up the page
             visiting_page = VisitedPage(original_function.__name__, original_function, arguments, "Creating Page", button_pressed)
             # self._page_history.append((visiting_page, original_state))
@@ -658,7 +657,7 @@ class Server:
                                       f"  Keyword Arguments: {kwargs!r}\n"
                                       f"  Button Pressed: {button_pressed!r}\n"
                                       f"  Function Signature: {inspect.signature(original_function)}")
-                self.make_error_page("Error creating page", e, original_function, additional_details)
+                raise DrafterError("Error creating page", e, original_function, additional_details)
             visiting_page.update("Verifying Page Result", original_page_content=page)
             self.verify_page_result(page, original_function)
             if False:
@@ -666,16 +665,14 @@ class Server:
             try:
                 page.verify_content(self)
             except Exception as e:
-                self.make_error_page("Error verifying content", e, original_function)
-                # return None
+                raise DrafterError("Error verifying content", e, original_function)
             self._state_history.append(page.state)
             self._state = page.state
             visiting_page.update("Rendering Page Content")
             try:
                 content = page.render_content(self.dump_state(), self.configuration)
             except Exception as e:
-                self.make_error_page("Error rendering content", e, original_function)
-                # return None
+                raise DrafterError("Error rendering content", e, original_function)
             visiting_page.finish("Finished Page Load")
             if self.configuration.debug:
                 content = content + self.make_debug_page()
@@ -757,8 +754,7 @@ class Server:
                             f"Make sure you return a Page object with the new state and the list of strings/content objects.")
 
         if message:
-            self.make_error_page("Error after creating page", ValueError(message), original_function)
-        # return None
+            raise DrafterError("Error after creating page", ValueError(message), original_function)
 
     def verify_page_state_history(self, page: Page, original_function: Callable[..., Page]) -> None:
         """
@@ -788,7 +784,7 @@ class Server:
                 f"Make sure you return the same type each time.")
         # TODO: Typecheck each field
         if message:
-            self.make_error_page("Error after creating page", ValueError(message), original_function)
+            raise DrafterError("Error after creating page", ValueError(message), original_function)
 
     def wrap_page(self, content: str) -> str:
         """
@@ -836,11 +832,6 @@ class Server:
                 header=header_content, styles=styles, scripts=scripts, content=content,
                 title=html.escape(self.configuration.title),
                 credit=credit)
-
-
-    def make_error_page(self, title: str, error: Exception, original_function: Callable[..., Page], additional_details: str = "") -> None:
-        # TODO: Make errors much prettier.
-        raise DrafterError(title, error, original_function, additional_details)
 
     def flash_warning(self, message: str) -> None:
         """
