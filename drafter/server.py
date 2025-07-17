@@ -470,7 +470,6 @@ class Server:
             while len(expected_parameters) < len(args) + len(kwargs) and kwargs:
                 kwargs.pop(list(kwargs.keys())[-1])
         # Type conversion if required
-        # TODO: Handle types of variable arguments (i.e. *args and **kwargs)
         expected_types = {name: p.annotation for name, p in
                           inspect.signature(original_function).parameters.items()}
         args = tuple(self.convert_parameter(param, val, expected_types, var_pos_param)
