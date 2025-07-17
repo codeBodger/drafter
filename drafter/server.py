@@ -1,4 +1,5 @@
 import base64
+import dataclasses
 import html
 from itertools import zip_longest
 import os
@@ -655,8 +656,8 @@ class Server:
                 additional_details = (f"  State: {state!r}\n"
                                       f"  Arguments: {args!r}\n"
                                       f"  Keyword Arguments: {kwargs!r}\n"
-                                      f"  Button Pressed: {button_pressed!r}\n"
-                                      f"  Function Signature: {inspect.signature(original_function)}")
+                                    #   f"  Button Pressed: {button_pressed!r}\n"
+                                      f"  Function Signature: {inspect_signature_str(inspect.signature(original_function))}")
                 raise DrafterError("Error creating page", e, original_function, additional_details)
             visiting_page.update("Verifying Page Result", original_page_content=page)
             self.verify_page_result(page, original_function)
@@ -1044,6 +1045,93 @@ def get_server_setting(key: str, default: Optional[Any] = None, server: Server =
     :return: The value of the setting, or the default value if not found
     """
     return getattr(server.configuration, key, default)
+
+def inspect_signature_str(sig: inspect.Signature) -> str:
+    """Create a string representation of the Signature object.
+
+    If *max_width* integer is passed,
+    signature will try to fit into the *max_width*.
+    If signature is longer than *max_width*,
+    all parameters will be on separate lines.
+
+    If *quote_annotation_strings* is False, annotations
+    in the signature are displayed without opening and closing quotation
+    marks. This is useful when the signature was created with the
+    STRING format or when ``from __future__ import annotations`` was used.
+    """
+    result: list[str] = []
+    render_pos_only_separator = False
+    render_kw_only_separator = True
+    for param in sig.parameters.values():
+        formatted = inspect_parameter_str(param)
+
+        kind = param.kind
+
+        if kind == inspect.Parameter.POSITIONAL_ONLY:
+            render_pos_only_separator = True
+        elif render_pos_only_separator:
+            # It's not a positional-only parameter, and the flag
+            # is set to 'True' (there were pos-only params before.)
+            result.append('/')
+            render_pos_only_separator = False
+
+        if kind == inspect.Parameter.VAR_POSITIONAL:
+            # OK, we have an '*args'-like parameter, so we won't need
+            # a '*' to separate keyword-only arguments
+            render_kw_only_separator = False
+        elif kind == inspect.Parameter.KEYWORD_ONLY and render_kw_only_separator:
+            # We have a keyword-only parameter to render and we haven't
+            # rendered an '*args'-like parameter before, so add a '*'
+            # separator to the parameters list ("foo(arg1, *, arg2)" case)
+            result.append('*')
+            # This condition should be only triggered once, so
+            # reset the flag
+            render_kw_only_separator = False
+
+        result.append(formatted)
+
+    if render_pos_only_separator:
+        # There were only positional-only parameters, hence the
+        # flag was not reset to 'False'
+        result.append('/')
+
+    rendered = f"({', '.join(result)})"
+
+    return rendered
+
+def inspect_parameter_str(param: inspect.Parameter) -> str:
+    kind = param.kind
+    formatted = param.name
+
+    # Add annotation and default value
+    if repr(param.annotation) != "<dataclasses.EmptyParameter object>":
+        annotation = inspect_formatannotation(param.annotation)
+        formatted = f"{formatted}: {annotation}"
+
+    if repr(param.default) != "<dataclasses.EmptyParameter object>":
+        if repr(param.annotation) != "<dataclasses.EmptyParameter object>":
+            formatted = f"{formatted} = {param.default!r}"
+        else:
+            formatted = f"{formatted}={param.default!r}"
+
+    if kind == inspect.Parameter.VAR_POSITIONAL:
+        formatted = '*' + formatted
+    elif kind == inspect.Parameter.VAR_KEYWORD:
+        formatted = '**' + formatted
+
+    return formatted
+
+def inspect_formatannotation(annotation: Any) -> str:
+    import types
+    if getattr(annotation, '__module__', None) == 'typing':
+        return repr(annotation).strip(" \t\n.").replace("typing.", "")
+    if isinstance(annotation, types.GenericAlias):
+        return str(annotation)
+    if isinstance(annotation, type):
+        if annotation.__module__ in ('builtins', None):
+            return annotation.__qualname__
+        return annotation.__module__+'.'+annotation.__qualname__
+    return repr(annotation)
 
 def render_route(route: str, state_str: str, page_history_str: str, args: str, kwargs: str, inputs: str) -> tuple[str, str, str]:
     """
