@@ -16,7 +16,6 @@ from drafter.components import PageContent
 from drafter.configuration import ServerConfiguration
 from drafter.constants import RESTORABLE_STATE_KEY, SUBMIT_BUTTON_KEY, PREVIOUSLY_PRESSED_BUTTON
 from drafter.debug import DebugInformation
-# from drafter.setup import Bottle, abort, request, static_file
 from drafter.history import VisitedPage, rehydrate_json, dehydrate_json, ConversionRecord, UnchangedRecord, \
     remap_hidden_form_parameters, safe_repr
 from drafter.page import Page, _Page
