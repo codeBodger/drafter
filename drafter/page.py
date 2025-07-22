@@ -89,7 +89,7 @@ class Page:
         """
         reset_button = Page.make_reset_button()
         home_button = Page.make_home_button()
-        return (f"<div class='container btlw-header'>{title}{home_button}{reset_button}</div>"
+        return (f"<div class='container btlw-header'>{title}{reset_button}{home_button}</div>"
                     f"<div class='container btlw-container'>{content}</div>")
 
     @staticmethod
@@ -120,7 +120,7 @@ class Page:
         :return: A string of HTML representing the home button.
         """
         return '''<button class="btlw-reset" 
-                    title="Resets the page to its original state. Any data entered will be lost."
+                    title="Return home, not changing the state."
                     onclick="goToRoute('/');"
                     >⌂</button>'''
 

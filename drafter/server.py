@@ -984,11 +984,12 @@ class DrafterError(BaseException):
 
     def __post_init__(self) -> None:
         self.tb = html.escape(traceback.format_exc())
+        self.title = f'<h1 style="display: inline-block;">{self.title}</h1>'
 
     def __str__(self) -> str:
         func_name = self.original_function.__name__ if callable(self.original_function) else self.original_function
         new_message = (
-            f"<h1>Error in <code>{func_name}<code>:</h1>\n"
+            f"<h1>Error in <code>{func_name}</code>:</h1>\n"
             f"<pre>{html.escape(str(self.error))}</pre>\n\n\n"
             f"<pre>{self.tb}</pre>"
         )
