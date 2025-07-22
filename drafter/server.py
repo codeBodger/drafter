@@ -287,47 +287,6 @@ class Server:
         self._initial_state = self.dump_state()
         self._initial_state_type = type(initial_state)
 
-        # Setup error pages
-        # def handle_404(error): # type: (bottle.HTTPError) -> str
-        def handle_404(error): # type: (Any) -> str
-            """
-            This is the default handler for HTTP 404 errors. It renders a custom error page
-            that displays a message indicating the requested page was not found, and provides
-            a link to return to the index page.
-            """
-            message = "<p>The requested page <code>{url}</code> was not found.</p>"#.format(url=request.url)
-            # TODO: Only show if not the index
-            message += "\n<p>You might want to return to the <a href='/'>index</a> page.</p>"
-            original_error = f"{error.body}\n"
-            if hasattr(error, 'traceback'):
-                original_error += f"{error.traceback}\n"
-            return TEMPLATE_404.format(title="404 Page not found", message=message,
-                                       error=original_error,
-                                       routes="\n".join(
-                                           f"<li><code>{r!r}</code>: <code>{func}</code></li>" for r, func in
-                                           self.original_routes))
-
-        # def handle_500(error): # type: (bottle.HTTPError) -> str
-        def handle_500(error): # type: (Any) -> str
-            """
-            This is the default handler for HTTP 500 errors. It renders a custom error page
-            that displays a message indicating an internal server error occurred, and provides
-            a link to return to the index page. along with some additional error details.
-            """
-            message = "<p>Sorry, the requested URL <code>{url}</code> caused an error.</p>"#.format(url=request.url)
-            message += "\n<p>You might want to return to the <a href='/'>index</a> page.</p>"
-            original_error = f"{error.body}\n"
-            if hasattr(error, 'traceback'):
-                original_error += f"{error.traceback}\n"
-            return TEMPLATE_500.format(title="500 Internal Server Error",
-                                       message=message,
-                                       error=original_error,
-                                       routes="\n".join(
-                                           f"<li><code>{r!r}</code>: <code>{func}</code></li>" for r, func in
-                                           self.original_routes))
-
-        # self.app.error(404)(handle_404)
-        # self.app.error(500)(handle_500)
         # Setup routes
         if not self.routes:
             raise ValueError("No routes have been defined.\nDid you remember the @route decorator?")
