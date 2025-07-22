@@ -14,7 +14,7 @@ function builtinRead(x) {
     return Sk.builtinFiles["files"][x];
 }
 // (Sk.TurtleGraphics || (Sk.TurtleGraphics = {})).target = "mycanvas";
-Sk.BottleSiteTarget = "#website";
+Sk.SiteTarget = "#website";
 
 // Sk.configure({ read: builtinRead, __future__: Sk.python3 });
 Sk.configure({ read: builtinRead, python3: true });
