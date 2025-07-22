@@ -211,29 +211,6 @@ class Server:
         """
         return rehydrate_json(json.loads(state), state_type)
 
-    # def restore_state_if_available(self, original_function: Callable[..., Page]) -> None:
-    #     """
-    #     Restores the state if the necessary data is available in the parameters. This
-    #     function checks for the presence of a specific key in the parameters and, when
-    #     available, rehydrates the serialized state back to the appropriate type and
-    #     assigns it to the current instance's state.
-
-    #     :param original_function: The function whose state is being restored. This function
-    #                               must have a parameter named `state` with an associated
-    #                               type annotation.
-    #     :return: None
-    #     """
-    #     params = get_params()
-    #     if RESTORABLE_STATE_KEY in params:
-    #         # Get state
-    #         old_state = json.loads(params.pop(RESTORABLE_STATE_KEY))
-    #         # Get state type
-    #         parameters = inspect.signature(original_function).parameters
-    #         if 'state' in parameters:
-    #             state_type = parameters['state'].annotation
-    #             self._state = rehydrate_json(old_state, state_type)
-    #             self.flash_warning("Successfully restored old state: " + repr(self._state))
-
     def add_route(self, url: str, func: Callable[..., Page]) -> None:
         """
         Adds a route to the routing table for URL handling, ensuring the URL is unique
@@ -560,8 +537,7 @@ class Server:
             # TODO: Handle SUBMIT_BUTTON_KEY, but (of course) not with that function.
                 # RESTORABLE_STATE_KEY isn't needed, since we're always restoring that.
             # url = remove_url_query_params(request.url, {RESTORABLE_STATE_KEY, SUBMIT_BUTTON_KEY})
-            # self.restore_state_if_available(original_function)
-            # original_state = self.dump_state()
+
             try:
                 args, kwargs, arguments, button_pressed = self.prepare_args(original_function, args, kwargs)
             except Exception as e:
