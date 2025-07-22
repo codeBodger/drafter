@@ -316,9 +316,6 @@ class Server:
         self.configuration = updated_configuration
         # Update the final args with the new configuration
         final_args.update(kwargs)
-        # if not self.app:
-        #     raise ValueError("You can't run the server if it hasn't been set up!")
-        # self.app.run(**final_args)
 
     def prepare_args(self,
                      original_function: Callable[..., Any],
@@ -350,8 +347,8 @@ class Server:
         #     button_pressed = json.loads(params.pop(SUBMIT_BUTTON_KEY))
         # elif PREVIOUSLY_PRESSED_BUTTON in params:
         #     button_pressed = json.loads(params.pop(PREVIOUSLY_PRESSED_BUTTON))
-        # TODO: Handle non-bottle backends
-            # specifically regarding button_pressed
+        # TODO: Handle getting button_pressed;
+            # remember to add it back to where it was removed in commit beb33ae
         # param_keys = list(params.keys())
         # for key in param_keys:
         #     kwargs[key] = params.pop(key)
@@ -362,6 +359,8 @@ class Server:
         expected_parameters = list(signature_parameters.keys())[1:]
         show_names = {param.name: (param.kind in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.VAR_KEYWORD))
                       for param in signature_parameters.values()}
+        # TODO: Clean up this mess; list comprehensions are nice, but we don't need to
+            # loop through 5 times in lines this long
         var_pos_param = [*(param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.VAR_POSITIONAL), ""][0]
         var_kwd_param = [*(param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.VAR_KEYWORD), ""][0]
         expected_pos_params = [param.name for param in signature_parameters_no_state if param.kind == inspect.Parameter.POSITIONAL_ONLY]
@@ -370,6 +369,7 @@ class Server:
 
         expected_pos_params = [*expected_pos_params, *expected_pkw_params]
 
+        # TODO: Remove this, once we know it's never necessary
         # kwargs = remap_hidden_form_parameters(kwargs, button_pressed)
         # Insert state into the beginning of args
         # if (expected_parameters and expected_parameters[0] == "state") or (
@@ -450,14 +450,13 @@ class Server:
                                  attributes are not properly configured.
         :return: None
         """
-        # if not self.app:
-        #     raise ValueError("You can't set up routes on the server if it hasn't been set up!")
         if self.configuration.deploy_image_path:
             # TODO: make this do anything
             # self.app.route(f"/{self.configuration.deploy_image_path}/<path:path>", 'GET', self.serve_image)
             # self.routes[f"/{self.configuration.deploy_image_path}/<path:path>"] = lambda state, path: self.serve_image(path)
             pass
 
+    # TODO: make this do anything
     # def serve_image(self, path): # type: (str) -> bottle.HTTPResponse
     def serve_image(self, path): # type: (str) -> Any
         """
@@ -470,50 +469,25 @@ class Server:
         :return: The static file object representing the requested image.
         :rtype: static_file
         """
-        # TODO: make this do anything
         raise NotImplementedError("serve_image is not yet implemented")
         # return static_file(path, root='./' + self.configuration.src_image_folder, mimetype='image/png')
 
+    # TODO: Possibly use this for drafter.FileUpload?
     def try_special_conversions(self, value: Any, target_type: type) -> Any:
         """
-        Attempts to convert the input value to the specified target type using various
-        specialized conversion methods. This method is designed to handle specific types
-        of input, such as `bottle.FileUpload`, supporting conversion to bytes, string,
-        dictionary, and, if available, `PIL.Image`.
+        Attempts to convert the input value to the specified target type
+            using the type's constructor.
 
-        :param value: The input value to be converted. Typically, this is expected
-            to be an instance of `bottle.FileUpload`.
+        :param value: The input value to be converted.
         :type value: Any
         :param target_type: The desired type to convert the input value to. This can
             include types such as `bytes`, `str`, `dict`, or others, depending on the
             availability of appropriate conversion logic.
         :type target_type: type
         :return: The converted value as an instance of the specified target type.
-            If no special conversion logic applies, the original value is passed
-            to the target type directly for conversion.
+            For now, the original value is passed to the target type for conversion.
         :rtype: Any
-        :raises ValueError: If the method encounters an error during conversion,
-            such as failure to decode file content as UTF-8, or if a file cannot be
-            opened as an image using PIL.Image when `HAS_PILLOW` is `True`.
         """
-        # if isinstance(value, bottle.FileUpload):
-        #     if target_type == bytes:
-        #         return target_type(value.file.read())
-        #     elif target_type == str:
-        #         try:
-        #             return value.file.read().decode('utf-8')
-        #         except UnicodeDecodeError as e:
-        #             raise ValueError(f"Could not decode file {value.filename} as utf-8. Perhaps the file is not the type that you expected, or the parameter type is inappropriate?") from e
-        #     elif target_type == dict:
-        #         return {'filename': value.filename, 'content': value.file.read()}
-        #     elif HAS_PILLOW and issubclass(target_type, PILImage.Image):
-        #         try:
-        #             image = PILImage.open(value.file)
-        #             image.filename = value.filename
-        #             return image
-        #         except Exception as e:
-        #             # TODO: Allow configuration for just setting this to None instead, if there is an error
-        #             raise ValueError(f"Could not open image file {value.filename} as a PIL.Image. Perhaps the file is not an image, or the parameter type is inappropriate?") from e
         return target_type(value)
 
     def convert_parameter(self, param: str, val: Any, expected_types: dict[str, type], var_arg_name: str) -> Any:
@@ -571,19 +545,20 @@ class Server:
 
     def make_drafter_page(self, original_function: Callable[..., Page]) -> Callable[..., str]:
         """
-        A decorator that wraps a given function to create and manage a Bottle web
-        page environment. This includes processing request parameters, building
-        the page, verifying its content, and rendering it to the client. It also
-        maintains state and history for the page creation and execution process.
+        A decorator that wraps a given function to create a Drafter web environment.
+        This includes processing parameters, building the page, verifying its content,
+        and rendering it to the client. It also maintains state and history for the page
+        creation and execution process.
 
         :param original_function: The original callable function to be wrapped
             and executed to construct the page.
         :return: A wrapped function that, when called, executes the original
-            function within the Bottle page handling logic.
+            function with the added Drafter page handling logic.
         """
         @wraps(original_function)
-        def bottle_page(state: Any, page_history: list[tuple[VisitedPage, str]], *args: Any, **kwargs: Any) -> str:
-            # TODO: Handle non-bottle backends
+        def drafter_page(state: Any, page_history: list[tuple[VisitedPage, str]], *args: Any, **kwargs: Any) -> str:
+            # TODO: Handle SUBMIT_BUTTON_KEY, but (of course) not with that function.
+                # RESTORABLE_STATE_KEY isn't needed, since we're always restoring that.
             # url = remove_url_query_params(request.url, {RESTORABLE_STATE_KEY, SUBMIT_BUTTON_KEY})
             # self.restore_state_if_available(original_function)
             # original_state = self.dump_state()
@@ -625,7 +600,7 @@ class Server:
             content = self.wrap_page(content)
             return content
 
-        return bottle_page
+        return drafter_page
 
     def stringify_history(self, history: Optional[list[tuple[VisitedPage, str]]]) -> str:
         history = history if history is not None else self._page_history
