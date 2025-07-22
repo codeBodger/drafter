@@ -92,7 +92,7 @@ SITE, STATE, PAGE_HISTORY = render_route('${route}',
                            '${getAllInputs()}')
 `
     execPython(python).then(() => {
-        document.getElementById("website").innerHTML = module.SITE.v;
+        document.querySelector(Sk.SiteTarget).innerHTML = module.SITE.v;
         localStorage.setItem("state", module.STATE.v);
         localStorage.setItem("page-history", module.PAGE_HISTORY.v);
         localStorage.setItem("route", route);
