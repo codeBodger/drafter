@@ -4,7 +4,7 @@ import html
 from itertools import zip_longest
 import os
 import traceback
-from dataclasses import dataclass, asdict, replace, field, fields
+from dataclasses import dataclass, replace, field, fields
 from functools import wraps
 from typing import Any, Callable, Never, Optional, List, Tuple, Union
 import json
@@ -274,25 +274,21 @@ class Server:
             self.routes['/'] = first_route
         self.handle_images()
 
-    def run(self, **kwargs: Any) -> None:
+    def update_config(self, **kwargs: Any) -> None:
         """
         Executes the server application using the provided configuration. The method will
-        update the configuration with any additional keyword arguments provided and start
-        the server application with the updated configuration.
+        update the configuration with any additional keyword arguments provided.
 
         :param kwargs: Arbitrary keyword arguments containing configuration updates. Only
             keys that match the ServerConfiguration fields will be applied.
-        :return: None. The server application is started with the updated configuration.
+        :return: None
         """
-        final_args = asdict(self.configuration)
         # Update the configuration with the safe kwargs
         safe_keys = fields(ServerConfiguration)
         safe_key_names = {field.name for field in safe_keys}
-        safe_kwargs: Any = {key: value for key, value in kwargs.items() if key in safe_key_names}
+        safe_kwargs: dict[str, Any] = {key: value for key, value in kwargs.items() if key in safe_key_names}
         updated_configuration = replace(self.configuration, **safe_kwargs)
         self.configuration = updated_configuration
-        # Update the final args with the new configuration
-        final_args.update(kwargs)
 
     def prepare_args(self,
                      original_function: Callable[..., Any],
@@ -1086,7 +1082,7 @@ def start_server(initial_state: Any = None, server: Server = MAIN_SERVER, skip: 
     Starts the server with the given initial state and configuration.
     If not running in Skulpt, starts a local HTTP server from which it runs everything.
     If the server is set to skip, it will not start.
-    Additional keyword arguments will be passed to the server's run method, and therefore to Bottle.
+    Additional keyword arguments will be passed to the server's update_config method.
     This can be used to control things like the ``port``.
 
     :param initial_state: The initial state to start the server with
@@ -1106,7 +1102,7 @@ def start_server(initial_state: Any = None, server: Server = MAIN_SERVER, skip: 
 
     if server.configuration.skulpt:
         server.setup(initial_state)
-        server.run(**kwargs) # really just an extension of setup to handle config
+        server.update_config(**kwargs) # TODO: always do this
         # global SITE
         # SITE = str(server.routes["/"](server._state))
         # SITE = str(server.routes["/"]())
@@ -1117,5 +1113,6 @@ def start_server(initial_state: Any = None, server: Server = MAIN_SERVER, skip: 
         with open("index.html", "w") as f:
             f.write(server.index_html_deployment())
 
+        # TODO: We shouldn't need any server in the end; this is just useful for dev
         from http.server import test, SimpleHTTPRequestHandler, ThreadingHTTPServer # type: ignore[attr-defined]
         test(SimpleHTTPRequestHandler, ThreadingHTTPServer, **kwargs)
