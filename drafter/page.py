@@ -69,11 +69,11 @@ class Page:
         content = "\n".join(chunked)
         # content = f"<form method='POST' enctype='multipart/form-data' accept-charset='utf-8'>{content}</form>"
         if configuration.framed:
-            content = Page.frame_content(content, configuration)
+            content = Page.frame_content(content, configuration.title)
         return content
     
     @staticmethod
-    def frame_content(content: str, configuration: ServerConfiguration) -> str:
+    def frame_content(content: str, title: str) -> str:
         """
         Frames a rendered page in a nice layout with a title and home  and reset buttons.
         Users should not call this method directly;
@@ -81,15 +81,15 @@ class Page:
 
         :param content: The content to be rendered to the page.
         :type content: str
-        :param configuration: The configuration of the server.
-            This will be used to determine the title.
-        :type configuration: ServerConfiguration
+        :param title: The title to be displayed;
+            typically that specified in the server configuration.
+        :type title: str
         :return: The given content, framed as detailed above.
         :rtype: str
         """
         reset_button = Page.make_reset_button()
         home_button = Page.make_home_button()
-        return (f"<div class='container btlw-header'>{configuration.title}{home_button}{reset_button}</div>"
+        return (f"<div class='container btlw-header'>{title}{home_button}{reset_button}</div>"
                     f"<div class='container btlw-container'>{content}</div>")
 
     @staticmethod
