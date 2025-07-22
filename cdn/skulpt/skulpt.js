@@ -20022,8 +20022,8 @@ Sk.configure = function (options) {
     Sk.imageProxy = options["imageProxy"] || "http://localhost:8080/320x";
     Sk.asserts.assert(typeof Sk.imageProxy === "string" || typeof Sk.imageProxy === "function");
 
-    Sk.BottleSiteTarget = options["BottleSiteTarget"] || "#website";
-    Sk.asserts.assert(typeof Sk.BottleSiteTarget === "string" || typeof Sk.BottleSiteTarget === "function");
+    Sk.SiteTarget = options["SiteTarget"] || "#website";
+    Sk.asserts.assert(typeof Sk.SiteTarget === "string" || typeof Sk.SiteTarget === "function");
 
     Sk.inputfun = options["inputfun"] || Sk.inputfun;
     Sk.asserts.assert(typeof Sk.inputfun === "function");
@@ -37771,8 +37771,8 @@ function check_special_type_attr(type, value, pyName) {
 var Sk = {}; // jshint ignore:line
 
 Sk.build = {
-    githash: "0d9c0e7cdff43c02ced20f531fc07a23e26d7e3e",
-    date: "2025-07-17T00:31:04.127Z"
+    githash: "e5ca401896528e69f5f3cda7985fc1ff2b8960e9",
+    date: "2025-07-22T22:54:09.939Z"
 };
 
 /**
