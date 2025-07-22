@@ -290,17 +290,10 @@ class Server:
         # Setup routes
         if not self.routes:
             raise ValueError("No routes have been defined.\nDid you remember the @route decorator?")
-        # self.app.route("/--reset", 'GET', self.reset)
+        # TODO: Don't overwrite user-defined /--reset route
         self.routes["/--reset"] = lambda state, page_history: self.reset()
-        # If not skulpt, then allow them to test the deployment
-        # if not self.configuration.skulpt:
-        #     self.app.route("/--test-deployment", 'GET', self.test_deployment)
-        # for url, func in self.routes.items():
-        #     self.app.route(url, 'GET', func)
-        #     self.app.route(url, "POST", func)
         if '/' not in self.routes:
             first_route = list(self.routes.values())[0]
-            # self.app.route('/', 'GET', first_route)
             self.routes['/'] = first_route
         self.handle_images()
 
