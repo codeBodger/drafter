@@ -15,13 +15,15 @@ TODO: Finish these
 - [ ] Optional bootstrap support
 - [ ] Swappable backends
 - [ ] Text is equal to strings?
+- [ ] Remove all references to Bottle
 
 Components to develop:
 
-- [x] Image
+- [ ] Image
 - [x] Table
-- [X] Link
+- [ ] Link
 - [X] Button
+- [ ] SubmitButton
 - [ ] Markdown
 - [X] Textbox
 - [X] SelectBox
@@ -37,3 +39,4 @@ Components to develop:
 - [X] Header
 - [X] TextArea
 - [ ] FileUpload
+- [ ] Redirect
