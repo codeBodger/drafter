@@ -77,7 +77,8 @@ BASIC_STYLE = """<!--html-->
         float: right;
         cursor: pointer;
         background-color: white;
-        padding: 4px;
+        /* padding: 4px; */
+        font-size: inherit;
         text-decoration: none;
         color: black;
     }

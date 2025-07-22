@@ -1,4 +1,5 @@
 import base64
+import dataclasses
 import html
 from itertools import zip_longest
 import os
@@ -644,8 +645,7 @@ class Server:
             try:
                 args, kwargs, arguments, button_pressed = self.prepare_args(original_function, args, kwargs)
             except Exception as e:
-                self.make_error_page("Error preparing arguments for page", e, original_function)
-                # return None
+                raise DrafterError("Error preparing arguments for page", e, original_function, self)
             # Actually start building up the page
             visiting_page = VisitedPage(original_function.__name__, original_function, arguments, "Creating Page", button_pressed)
             # self._page_history.append((visiting_page, original_state))
@@ -656,9 +656,9 @@ class Server:
                 additional_details = (f"  State: {state!r}\n"
                                       f"  Arguments: {args!r}\n"
                                       f"  Keyword Arguments: {kwargs!r}\n"
-                                      f"  Button Pressed: {button_pressed!r}\n"
-                                      f"  Function Signature: {inspect.signature(original_function)}")
-                self.make_error_page("Error creating page", e, original_function, additional_details)
+                                    #   f"  Button Pressed: {button_pressed!r}\n"
+                                      f"  Function Signature: {inspect_signature_str(inspect.signature(original_function))}")
+                raise DrafterError("Error creating page", e, original_function, self, additional_details)
             visiting_page.update("Verifying Page Result", original_page_content=page)
             self.verify_page_result(page, original_function)
             if False:
@@ -666,16 +666,14 @@ class Server:
             try:
                 page.verify_content(self)
             except Exception as e:
-                self.make_error_page("Error verifying content", e, original_function)
-                # return None
+                raise DrafterError("Error verifying content", e, original_function, self)
             self._state_history.append(page.state)
             self._state = page.state
             visiting_page.update("Rendering Page Content")
             try:
                 content = page.render_content(self.dump_state(), self.configuration)
             except Exception as e:
-                self.make_error_page("Error rendering content", e, original_function)
-                # return None
+                raise DrafterError("Error rendering content", e, original_function, self)
             visiting_page.finish("Finished Page Load")
             if self.configuration.debug:
                 content = content + self.make_debug_page()
@@ -757,8 +755,7 @@ class Server:
                             f"Make sure you return a Page object with the new state and the list of strings/content objects.")
 
         if message:
-            self.make_error_page("Error after creating page", ValueError(message), original_function)
-        # return None
+            raise DrafterError("Error after creating page", ValueError(message), original_function, self)
 
     def verify_page_state_history(self, page: Page, original_function: Callable[..., Page]) -> None:
         """
@@ -788,7 +785,7 @@ class Server:
                 f"Make sure you return the same type each time.")
         # TODO: Typecheck each field
         if message:
-            self.make_error_page("Error after creating page", ValueError(message), original_function)
+            raise DrafterError("Error after creating page", ValueError(message), original_function, self)
 
     def wrap_page(self, content: str) -> str:
         """
@@ -836,38 +833,6 @@ class Server:
                 header=header_content, styles=styles, scripts=scripts, content=content,
                 title=html.escape(self.configuration.title),
                 credit=credit)
-
-
-    def make_error_page(self, title: str, error: Exception, original_function: Callable[..., Page], additional_details: str = "") -> None:
-        """
-        Generates and displays a detailed error page upon encountering an issue in the application.
-
-        This function formats a detailed error message by including the title of the error,
-        the original function's name where the error occurred, the original error's message, and
-        any additional details if provided. It also escapes potentially unsafe HTML characters
-        from the error details and traceback to improve security. The formatted message is then
-        displayed with an HTTP 500 Internal Server Error status.
-
-        :param title: A brief, descriptive title for the error (e.g., "Server Error").
-        :type title: str
-        :param error: The original error/exception that was encountered.
-        :type error: Exception
-        :param original_function: The function object where the error originated.
-        :type original_function: Callable
-        :param additional_details: Optional additional information or context about the error. Defaults to an empty string.
-        :type additional_details: str
-        :return: Does not return any value as it raises an HTTP 500 error with the formatted message.
-        :rtype: None
-        """
-        # TODO: Make errors much prettier.
-        tb = html.escape(traceback.format_exc())
-        new_message = (f"""{title}.\n"""
-                       f"""Error in {original_function.__name__}:\n"""
-                       f"""{html.escape(str(error))}\n\n\n{tb}""")
-        if additional_details:
-            new_message += f"\n\n\nAdditional Details:\n{additional_details}"
-        # abort(500, new_message)
-        raise DrafterError(500, new_message)
 
     def flash_warning(self, message: str) -> None:
         """
@@ -992,11 +957,50 @@ class Server:
 
 @dataclass
 class DrafterError(BaseException):
-    code: int = 500
-    text: str = "Unknown Error."
+    """
+    Generates and displays a detailed error page upon encountering an issue in the application.
+
+    This class formats a detailed error message by including the title of the error,
+    the original function's name where the error occurred, the original error's message, and
+    any additional details if provided. It also escapes potentially unsafe HTML characters
+    from the error details and traceback to improve security. The formatted message is then
+    displayed to the user.
+
+    :param title: A brief, descriptive title for the error (e.g., "Server Error").
+    :type title: str
+    :param error: The original error/exception that was encountered.
+    :type error: Exception
+    :param original_function: The function object or name of the route being loaded
+        where the error originated.
+    :type original_function: Callable | str
+    :param additional_details: Optional additional information or context about the error. Defaults to an empty string.
+    :type additional_details: str
+    """
+    title: str
+    error: Exception
+    original_function: Union[Callable[..., Any], str]
+    server: Server
+    additional_details: str = ""
+
+    def __post_init__(self) -> None:
+        self.tb = html.escape(traceback.format_exc())
+        self.title = f'<h1 style="display: inline-block;">{self.title}</h1>'
 
     def __str__(self) -> str:
-        return f"<h1>Error Code: {self.code}</h1>\n<div>{self.text}</div>"
+        func_name = self.original_function.__name__ if callable(self.original_function) else self.original_function
+        new_message = (
+            f"<h1>Error in <code>{func_name}</code>:</h1>\n"
+            f"<pre>{html.escape(str(self.error))}</pre>\n\n\n"
+            f"<pre>{self.tb}</pre>"
+        )
+        if self.additional_details:
+            new_message += ("\n\n\n<h1>Additional Details:</h1>\n"
+                           f"<pre>{self.additional_details}</pre>")
+
+        content = Page.frame_content(new_message, self.title)
+        content += self.server.make_debug_page()
+        content = self.server.wrap_page(content)
+        return content
 
 
 MAIN_SERVER = Server(_custom_name="MAIN_SERVER")
@@ -1047,6 +1051,93 @@ def get_server_setting(key: str, default: Optional[Any] = None, server: Server =
     """
     return getattr(server.configuration, key, default)
 
+def inspect_signature_str(sig: inspect.Signature) -> str:
+    """Create a string representation of the Signature object.
+
+    If *max_width* integer is passed,
+    signature will try to fit into the *max_width*.
+    If signature is longer than *max_width*,
+    all parameters will be on separate lines.
+
+    If *quote_annotation_strings* is False, annotations
+    in the signature are displayed without opening and closing quotation
+    marks. This is useful when the signature was created with the
+    STRING format or when ``from __future__ import annotations`` was used.
+    """
+    result: list[str] = []
+    render_pos_only_separator = False
+    render_kw_only_separator = True
+    for param in sig.parameters.values():
+        formatted = inspect_parameter_str(param)
+
+        kind = param.kind
+
+        if kind == inspect.Parameter.POSITIONAL_ONLY:
+            render_pos_only_separator = True
+        elif render_pos_only_separator:
+            # It's not a positional-only parameter, and the flag
+            # is set to 'True' (there were pos-only params before.)
+            result.append('/')
+            render_pos_only_separator = False
+
+        if kind == inspect.Parameter.VAR_POSITIONAL:
+            # OK, we have an '*args'-like parameter, so we won't need
+            # a '*' to separate keyword-only arguments
+            render_kw_only_separator = False
+        elif kind == inspect.Parameter.KEYWORD_ONLY and render_kw_only_separator:
+            # We have a keyword-only parameter to render and we haven't
+            # rendered an '*args'-like parameter before, so add a '*'
+            # separator to the parameters list ("foo(arg1, *, arg2)" case)
+            result.append('*')
+            # This condition should be only triggered once, so
+            # reset the flag
+            render_kw_only_separator = False
+
+        result.append(formatted)
+
+    if render_pos_only_separator:
+        # There were only positional-only parameters, hence the
+        # flag was not reset to 'False'
+        result.append('/')
+
+    rendered = f"({', '.join(result)})"
+
+    return rendered
+
+def inspect_parameter_str(param: inspect.Parameter) -> str:
+    kind = param.kind
+    formatted = param.name
+
+    # Add annotation and default value
+    if repr(param.annotation) != "<dataclasses.EmptyParameter object>":
+        annotation = inspect_formatannotation(param.annotation)
+        formatted = f"{formatted}: {annotation}"
+
+    if repr(param.default) != "<dataclasses.EmptyParameter object>":
+        if repr(param.annotation) != "<dataclasses.EmptyParameter object>":
+            formatted = f"{formatted} = {param.default!r}"
+        else:
+            formatted = f"{formatted}={param.default!r}"
+
+    if kind == inspect.Parameter.VAR_POSITIONAL:
+        formatted = '*' + formatted
+    elif kind == inspect.Parameter.VAR_KEYWORD:
+        formatted = '**' + formatted
+
+    return formatted
+
+def inspect_formatannotation(annotation: Any) -> str:
+    import types
+    if getattr(annotation, '__module__', None) == 'typing':
+        return repr(annotation).strip(" \t\n.").replace("typing.", "")
+    if isinstance(annotation, types.GenericAlias):
+        return str(annotation)
+    if isinstance(annotation, type):
+        if annotation.__module__ in ('builtins', None):
+            return annotation.__qualname__
+        return annotation.__module__+'.'+annotation.__qualname__
+    return repr(annotation)
+
 def render_route(route: str, state_str: str, page_history_str: str, args: str, kwargs: str, inputs: str) -> tuple[str, str, str]:
     """
     Renders the route specified with the state and arguments specified.
@@ -1081,12 +1172,12 @@ def render_route(route: str, state_str: str, page_history_str: str, args: str, k
     try:
         page = server.routes[route](state, page_history, *py_args, **py_kwargs)
     except DrafterError as e:
-        tb = html.escape(traceback.format_exc())
-        return f"<h1>Unknown Error:</h1>\n<pre>{e}</pre>\n<pre>{tb}</pre>", state_str, server.stringify_history(server._page_history)
+        return str(e), state_str, server.stringify_history(server._page_history)
     except Exception as e:
         # tb = html.escape("<br>".join(traceback.format_exc().split("\n")))
-        tb = html.escape(traceback.format_exc())
-        return f"<h1>Unknown Error:</h1>\n<pre>{e}</pre>\n<pre>{tb}</pre>", state_str, server.stringify_history(server._page_history)
+        # tb = html.escape(traceback.format_exc())
+        err = DrafterError("Unknown Error", e, route, server)
+        return str(err), state_str, server.stringify_history(server._page_history)
 
     # print(1009, server._page_history[0][0])
     # print(1010, json.dumps(server._page_history[0][0]))
