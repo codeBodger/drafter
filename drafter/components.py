@@ -358,7 +358,7 @@ class Button(PageContent):
     kwargs: dict[str, Any]
 
     def __init__(self, text: str, onclick: Callable[..., Any],
-                 args: Optional[tuple[Any, ...]] = None, kwargs: Optional[dict[str, Any]] = None,
+                 args: Optional[list[Any]] = None, kwargs: Optional[dict[str, Any]] = None,
                  **extra_settings: Any) -> None:
         self.text = text
         self.onclick = onclick
