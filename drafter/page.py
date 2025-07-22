@@ -70,13 +70,15 @@ class Page:
         # content = f"<form method='POST' enctype='multipart/form-data' accept-charset='utf-8'>{content}</form>"
         if configuration.framed:
             reset_button = self.make_reset_button()
-            content = (f"<div class='container btlw-header'>{configuration.title}{reset_button}</div>"
+            home_button = self.make_home_button()
+            content = (f"<div class='container btlw-header'>{configuration.title}{home_button}{reset_button}</div>"
                        f"<div class='container btlw-container'>{content}</div>")
         return content
 
     def make_reset_button(self) -> str:
         """
-        Creates a reset button that has the "reset" icon and title text that says "Resets the page to its original state.".
+        Creates a reset button that has the "reset" icon and title text that says
+        "Resets the page to its original state.".
         Simply links to the "--reset" URL.
 
         :return: A string of HTML representing the reset button.
@@ -89,6 +91,19 @@ class Page:
                     title="Resets the page to its original state. Any data entered will be lost."
                     onclick="confirm('This will reset the page to its original state. Any data entered will be lost. Are you sure you want to continue?') && goToRoute('/--reset');"
                     >⟳</button>'''
+
+    def make_home_button(self) -> str:
+        """
+        Creates a home button that has the "home" icon and title text that says
+        "Return home, not changing the state.".
+        Simply links to the "/" URL.
+
+        :return: A string of HTML representing the home button.
+        """
+        return '''<button class="btlw-reset" 
+                    title="Resets the page to its original state. Any data entered will be lost."
+                    onclick="goToRoute('/');"
+                    >⌂</button>'''
 
     def verify_content(self, server: 'Server') -> bool:
         """
