@@ -11,8 +11,6 @@ import json
 import inspect
 import pathlib
 
-# import bottle
-
 from drafter.urls import friendly_urls
 from drafter.components import PageContent
 from drafter.configuration import ServerConfiguration
@@ -20,7 +18,7 @@ from drafter.constants import RESTORABLE_STATE_KEY, SUBMIT_BUTTON_KEY, PREVIOUSL
 from drafter.debug import DebugInformation
 # from drafter.setup import Bottle, abort, request, static_file
 from drafter.history import VisitedPage, rehydrate_json, dehydrate_json, ConversionRecord, UnchangedRecord, \
-    remap_hidden_form_parameters, safe_repr#, get_params
+    remap_hidden_form_parameters, safe_repr
 from drafter.page import Page, _Page
 from drafter.files import TEMPLATE_200, TEMPLATE_404, TEMPLATE_500, INCLUDE_STYLES, TEMPLATE_200_WITHOUT_HEADER, TEMPLATE_INDEX_HTML, \
     TEMPLATE_SKULPT_DEPLOY, seek_file_by_line
@@ -105,8 +103,7 @@ class Server:
 
     This class allows the definition of web routes, manages application states, handles errors
     gracefully, and provides a framework for deploying a web application with a structured
-    configuration and support for image serving. It integrates with the Bottle framework
-    to handle HTTP requests and responses.
+    configuration and support for image serving.
 
     :ivar routes: A dictionary mapping URLs to their respective handler functions.
     :type routes: dict
@@ -130,8 +127,6 @@ class Server:
     :type _conversion_record: list
     :ivar original_routes: List containing tuples of original route URLs and their handlers.
     :type original_routes: list
-    # :ivar app: The Bottle application instance for handling HTTP requests.
-    # :type app: Bottle or None
     :ivar _custom_name: Custom name for the server instance, used in string representations.
     :type _custom_name: str or None
     :ivar production: Whether the server is in production mode.
@@ -154,7 +149,6 @@ class Server:
         self._page_history: List[Tuple[VisitedPage, str]] = []
         self._conversion_record: list[Union[ConversionRecord, UnchangedRecord]] = []
         self.original_routes: list[Tuple[str, Callable[..., Page]]] = []
-        # self.app: Union[Bottle, None] = None
         self._custom_name = _custom_name
         self.production = False
         self.image_folder = "images"
@@ -259,7 +253,7 @@ class Server:
             raise ValueError(f"URL `{url}` already exists for an existing routed function: `{func.__name__}`")
         self.original_routes.append((url, func))
         url = friendly_urls(url)
-        made_func = self.make_bottle_page(func)
+        made_func = self.make_drafter_page(func)
         self.routes[url] = made_func
         self._handle_route[url] = self._handle_route[made_func] = made_func
 
@@ -292,7 +286,6 @@ class Server:
         self._state = initial_state
         self._initial_state = self.dump_state()
         self._initial_state_type = type(initial_state)
-        # self.app = Bottle()
 
         # Setup error pages
         # def handle_404(error): # type: (bottle.HTTPError) -> str
@@ -624,7 +617,7 @@ class Server:
         self._conversion_record.append(UnchangedRecord(param, val))
         return val
 
-    def make_bottle_page(self, original_function: Callable[..., Page]) -> Callable[..., str]:
+    def make_drafter_page(self, original_function: Callable[..., Page]) -> Callable[..., str]:
         """
         A decorator that wraps a given function to create and manage a Bottle web
         page environment. This includes processing request parameters, building
