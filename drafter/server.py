@@ -645,7 +645,7 @@ class Server:
             try:
                 args, kwargs, arguments, button_pressed = self.prepare_args(original_function, args, kwargs)
             except Exception as e:
-                raise DrafterError("Error preparing arguments for page", e, original_function)
+                raise DrafterError("Error preparing arguments for page", e, original_function, self)
             # Actually start building up the page
             visiting_page = VisitedPage(original_function.__name__, original_function, arguments, "Creating Page", button_pressed)
             # self._page_history.append((visiting_page, original_state))
@@ -658,7 +658,7 @@ class Server:
                                       f"  Keyword Arguments: {kwargs!r}\n"
                                     #   f"  Button Pressed: {button_pressed!r}\n"
                                       f"  Function Signature: {inspect_signature_str(inspect.signature(original_function))}")
-                raise DrafterError("Error creating page", e, original_function, additional_details)
+                raise DrafterError("Error creating page", e, original_function, self, additional_details)
             visiting_page.update("Verifying Page Result", original_page_content=page)
             self.verify_page_result(page, original_function)
             if False:
@@ -666,14 +666,14 @@ class Server:
             try:
                 page.verify_content(self)
             except Exception as e:
-                raise DrafterError("Error verifying content", e, original_function)
+                raise DrafterError("Error verifying content", e, original_function, self)
             self._state_history.append(page.state)
             self._state = page.state
             visiting_page.update("Rendering Page Content")
             try:
                 content = page.render_content(self.dump_state(), self.configuration)
             except Exception as e:
-                raise DrafterError("Error rendering content", e, original_function)
+                raise DrafterError("Error rendering content", e, original_function, self)
             visiting_page.finish("Finished Page Load")
             if self.configuration.debug:
                 content = content + self.make_debug_page()
@@ -755,7 +755,7 @@ class Server:
                             f"Make sure you return a Page object with the new state and the list of strings/content objects.")
 
         if message:
-            raise DrafterError("Error after creating page", ValueError(message), original_function)
+            raise DrafterError("Error after creating page", ValueError(message), original_function, self)
 
     def verify_page_state_history(self, page: Page, original_function: Callable[..., Page]) -> None:
         """
@@ -785,7 +785,7 @@ class Server:
                 f"Make sure you return the same type each time.")
         # TODO: Typecheck each field
         if message:
-            raise DrafterError("Error after creating page", ValueError(message), original_function)
+            raise DrafterError("Error after creating page", ValueError(message), original_function, self)
 
     def wrap_page(self, content: str) -> str:
         """
@@ -979,6 +979,7 @@ class DrafterError(BaseException):
     title: str
     error: Exception
     original_function: Union[Callable[..., Any], str]
+    server: Server
     additional_details: str = ""
 
     def __post_init__(self) -> None:
@@ -987,15 +988,18 @@ class DrafterError(BaseException):
     def __str__(self) -> str:
         func_name = self.original_function.__name__ if callable(self.original_function) else self.original_function
         new_message = (
-            f"<h1>{self.title}.</h1>\n"
-            f"<h2>Error in <code>{func_name}<code>:</h2>\n"
+            f"<h1>Error in <code>{func_name}<code>:</h1>\n"
             f"<pre>{html.escape(str(self.error))}</pre>\n\n\n"
             f"<pre>{self.tb}</pre>"
         )
         if self.additional_details:
-            new_message += ("\n\n\n<h2>Additional Details:</h2>\n"
+            new_message += ("\n\n\n<h1>Additional Details:</h1>\n"
                            f"<pre>{self.additional_details}</pre>")
-        return new_message
+
+        content = Page.frame_content(new_message, self.title)
+        content += self.server.make_debug_page()
+        content = self.server.wrap_page(content)
+        return content
 
 
 MAIN_SERVER = Server(_custom_name="MAIN_SERVER")
@@ -1171,7 +1175,7 @@ def render_route(route: str, state_str: str, page_history_str: str, args: str, k
     except Exception as e:
         # tb = html.escape("<br>".join(traceback.format_exc().split("\n")))
         # tb = html.escape(traceback.format_exc())
-        err = DrafterError("Unknown Error", e, route)
+        err = DrafterError("Unknown Error", e, route, server)
         return str(err), state_str, server.stringify_history(server._page_history)
 
     # print(1009, server._page_history[0][0])
