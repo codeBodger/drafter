@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Some residuals remain, but are not used
   * Route direction is handled in JS
   * Student code is in Sk.builtinFiles
+  * Functionally all references to Bottle are gone
 
 ### Fixed
 

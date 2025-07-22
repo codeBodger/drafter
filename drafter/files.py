@@ -317,6 +317,7 @@ TEMPLATE_INDEX_HTML = """<!DOCTYPE html>
             Loading...
         </div>
         <script src="{cdn_drafter_setup}" type="text/javascript"></script>
+        <script type="text/javascript">Sk.SiteTarget = "#website";</script>
     </body>
 </html>
 """

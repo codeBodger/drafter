@@ -55,4 +55,4 @@ class TestServer:
         self.thread.join()
 
     def run_server(self):
-        self.server.run(server=self.wsgi, **self.run_kwargs)
+        self.server.update_config(server=self.wsgi, **self.run_kwargs)

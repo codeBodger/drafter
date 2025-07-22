@@ -15,7 +15,7 @@ TODO: Finish these
 - [ ] Optional bootstrap support
 - [ ] Swappable backends
 - [ ] Text is equal to strings?
-- [ ] Remove all references to Bottle
+- [X] Remove all references to Bottle (functionally done)
 
 Components to develop:
 
