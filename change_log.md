@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+* Type hints
+* Runtime generation of index.html
+* The CDN is in this repository
+* Server.prepare_args now handles var-args
+
+### Removed
+
+* Abandon Bottle entirely
+  * Some residuals remain, but are not used
+  * Route direction is handled in JS
+  * Student code is in Sk.builtinFiles
+
+### Fixed
+
+* Student code is in src/student instead of src/lib (so we get line numbers, etc)
+* The new Button class can now pass pos_args and kwd_args to the route
+  * This works differently to how the old SubmitButton/Button worked
+* The @route decorator now has correct typing, done using @overload
+* Fixed broad issues with errors and made them pretier
+* Button now assumes args are a list, not a tuple, that way students are less confused
+
 ## [1.7.2] - 2025-04-17
 
 ### Fixed
