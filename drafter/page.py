@@ -69,13 +69,31 @@ class Page:
         content = "\n".join(chunked)
         # content = f"<form method='POST' enctype='multipart/form-data' accept-charset='utf-8'>{content}</form>"
         if configuration.framed:
-            reset_button = self.make_reset_button()
-            home_button = self.make_home_button()
-            content = (f"<div class='container btlw-header'>{configuration.title}{home_button}{reset_button}</div>"
-                       f"<div class='container btlw-container'>{content}</div>")
+            content = Page.frame_content(content, configuration)
         return content
+    
+    @staticmethod
+    def frame_content(content: str, configuration: ServerConfiguration) -> str:
+        """
+        Frames a rendered page in a nice layout with a title and home  and reset buttons.
+        Users should not call this method directly;
+        it will be called on their behalf by the server.
 
-    def make_reset_button(self) -> str:
+        :param content: The content to be rendered to the page.
+        :type content: str
+        :param configuration: The configuration of the server.
+            This will be used to determine the title.
+        :type configuration: ServerConfiguration
+        :return: The given content, framed as detailed above.
+        :rtype: str
+        """
+        reset_button = Page.make_reset_button()
+        home_button = Page.make_home_button()
+        return (f"<div class='container btlw-header'>{configuration.title}{home_button}{reset_button}</div>"
+                    f"<div class='container btlw-container'>{content}</div>")
+
+    @staticmethod
+    def make_reset_button() -> str:
         """
         Creates a reset button that has the "reset" icon and title text that says
         "Resets the page to its original state.".
@@ -92,7 +110,8 @@ class Page:
                     onclick="confirm('This will reset the page to its original state. Any data entered will be lost. Are you sure you want to continue?') && goToRoute('/--reset');"
                     >⟳</button>'''
 
-    def make_home_button(self) -> str:
+    @staticmethod
+    def make_home_button() -> str:
         """
         Creates a home button that has the "home" icon and title text that says
         "Return home, not changing the state.".
