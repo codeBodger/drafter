@@ -143,7 +143,7 @@ class Page:
 class Redirect(Page):
     def __init__(self, state: Any, to: Callable[[Any], Page]) -> None:
         route = friendly_urls(to.__name__)
-        content: list[Content] = [f"<script>goToRoute('{route}')</script>"]
+        content: list[Content] = [f"""<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="goToRoute('{route}')">"""]
         super().__init__(state, content)
 
 
