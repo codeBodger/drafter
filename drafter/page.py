@@ -1,11 +1,12 @@
 # from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING, Optional, TypeAlias, Union
+from typing import Any, TYPE_CHECKING, Callable, Optional, TypeAlias, Union
 
 from drafter.configuration import ServerConfiguration
 from drafter.constants import RESTORABLE_STATE_KEY
 from drafter.components import Content, PageContent, Link
+from drafter.urls import friendly_urls
 
 if TYPE_CHECKING:
     from drafter.server import Server
@@ -137,6 +138,13 @@ class Page:
             if isinstance(chunk, Link):
                 chunk.verify(server)
         return True
+
+
+class Redirect(Page):
+    def __init__(self, state: Any, to: Callable[[Any], Page]) -> None:
+        route = friendly_urls(to.__name__)
+        content: list[Content] = [f"<script>goToRoute('{route}')</script>"]
+        super().__init__(state, content)
 
 
 _Page: TypeAlias = Union[str, Page]
