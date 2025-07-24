@@ -8,7 +8,7 @@ RETURN = TypeVar('RETURN', bound='Page', covariant=True)
 PARAMS = ParamSpec('PARAMS')
 STATE = TypeVar('STATE')
 
-FUNC = TypeVar('FUNC', bound=Callable[Concatenate[Any, ...], 'Page'])
+FUNC = TypeVar('FUNC', bound=Callable[Concatenate[Any, ...], 'Page'], covariant=True)
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -22,14 +22,13 @@ class UnCallable(Generic[FUNC]):
 
     def __init__(self, func: FUNC) -> None:
         self.func = func
-        @self.paramspec_from(func)
-        def __call__(self: Self, *args: Any, **kwargs: Any) -> None:
-            raise NotImplementedError("You shouldn't call routes and redirects!")
-        self.__call__ = __call__
+        self.__call__ = self.paramspec_from(func)(self.__call__)
     
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.func, attr)
     
+    def __call__(self, *args: Any, **kwargs: Any) -> None:
+        raise NotImplementedError("You shouldn't call routes and redirects!")
 
 
 
