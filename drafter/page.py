@@ -1,7 +1,7 @@
 # from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING, Callable, Optional, TypeAlias, Union
+from typing import Any, TYPE_CHECKING, Optional, TypeAlias, TypeVar, Union
 
 from drafter.configuration import ServerConfiguration
 from drafter.constants import RESTORABLE_STATE_KEY
@@ -10,6 +10,7 @@ from drafter.urls import friendly_urls
 
 if TYPE_CHECKING:
     from drafter.server import Server
+    from drafter.routes import UnCallable
 
 
 @dataclass
@@ -140,6 +141,8 @@ class Page:
         return True
 
 
+STATE = TypeVar('STATE')
+
 class Redirect(Page):
     """
     A Redirect is a Page that simply redirects to another route.
@@ -153,7 +156,7 @@ class Redirect(Page):
     :param to: The route to redirect to.
     :type to: (Any) -> Page
     """
-    def __init__(self, state: Any, to: Callable[[Any], Page]) -> None:
+    def __init__(self, state: STATE, to: 'UnCallable[STATE, [], Page]') -> None:
         route = friendly_urls(to.__name__)
         content: list[Content] = [f"""<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="goToRoute('{route}')">"""]
         super().__init__(state, content)

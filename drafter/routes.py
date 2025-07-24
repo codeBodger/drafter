@@ -1,18 +1,36 @@
-from typing import Any, Union, Callable, Optional, TYPE_CHECKING, overload
+from typing import Any, Concatenate, Generic, ParamSpec, TypeVar, Union, Callable, Optional, TYPE_CHECKING, overload
 from drafter.server import Server, get_main_server
 
 if TYPE_CHECKING:
     from drafter.page import Page, Redirect
 
+RETURN = TypeVar('RETURN', bound='Page', covariant=True)
+PARAMS = ParamSpec('PARAMS')
+STATE = TypeVar('STATE')
+
+class UnCallable(Generic[STATE, PARAMS, RETURN]):
+    def __init__(self, func: Callable[Concatenate[STATE, PARAMS], RETURN]) -> None:
+        self.func = func
+    
+    def __getattr__(self, attr: str) -> Any:
+        return getattr(self.func, attr)
+    
+    def __call__(self, state: STATE, *args: PARAMS.args, **kwargs: PARAMS.kwargs) -> None:
+        raise NotImplementedError("You shouldn't call routes and redirects!")
+
+
 
 @overload
-def route(url: Callable[[Any], 'Page'], server: Optional[Server] = None) -> Callable[[Any], 'Page']: ...
+def route(url: Callable[[STATE], 'Page'], server: Optional[Server] = None) -> UnCallable[STATE, [], 'Page']: ...
 @overload
-def route(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[[Callable[[Any], 'Page']], Callable[[Any], 'Page']]: ...
+def route(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[
+    [Callable[[STATE], 'Page']],
+    UnCallable[STATE, [], 'Page']
+]: ...
 
-def route(url: Union[Callable[[Any], 'Page'], str, None] = None, server: Optional[Server] = None) -> Union[
-        Callable[[Any], 'Page'],
-        Callable[[Callable[[Any], 'Page']], Callable[[Any], 'Page']]
+def route(url: Union[Callable[[STATE], 'Page'], str, None] = None, server: Optional[Server] = None) -> Union[
+        UnCallable[STATE, [], 'Page'],
+        Callable[[Callable[[STATE], 'Page']], UnCallable[STATE, [], 'Page']]
     ]:
     """
     Main function to add a new route to the server. Recommended to use as a decorator.
@@ -30,29 +48,29 @@ def route(url: Union[Callable[[Any], 'Page'], str, None] = None, server: Optiona
     if callable(url):
         local_url = url.__name__
         server.add_route(local_url, url)
-        return url
+        return UnCallable(url)
 
-    def make_route(func: Callable[[Any], 'Page']) -> Callable[[Any], 'Page']:
+    def make_route(func: Callable[[STATE], 'Page']) -> UnCallable[STATE, [], 'Page']:
         local_url = url
         if local_url is None:
             local_url = func.__name__
         server.add_route(local_url, func)
-        return func
+        return UnCallable(func)
 
     return make_route
 
 
 @overload
-def redirect(url: Callable[..., 'Redirect'], server: Optional[Server] = None) -> Callable[..., 'Redirect']: ...
+def redirect(url: Callable[Concatenate[STATE, PARAMS], 'Redirect'], server: Optional[Server] = None) -> UnCallable[STATE, PARAMS, 'Redirect']: ...
 @overload
 def redirect(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[
-        [Callable[..., 'Redirect']],
-        Callable[..., 'Redirect']
+        [Callable[Concatenate[STATE, PARAMS], 'Redirect']],
+        UnCallable[STATE, PARAMS, 'Redirect']
     ]: ...
 
-def redirect(url: Union[Callable[..., 'Redirect'], str, None] = None, server: Optional[Server] = None) -> Union[
-        Callable[..., 'Redirect'],
-        Callable[[Callable[..., 'Redirect']], Callable[..., 'Redirect']]
+def redirect(url: Union[Callable[Concatenate[STATE, PARAMS], 'Redirect'], str, None] = None, server: Optional[Server] = None) -> Union[
+        UnCallable[STATE, PARAMS, 'Redirect'],
+        Callable[[Callable[Concatenate[STATE, PARAMS], 'Redirect']], UnCallable[STATE, PARAMS, 'Redirect']]
     ]:
     """
     Main function to add a new redirect to the server. Recommended to use as a decorator.
@@ -68,13 +86,13 @@ def redirect(url: Union[Callable[..., 'Redirect'], str, None] = None, server: Op
     if callable(url):
         local_url = url.__name__
         server.add_route(local_url, url)
-        return url
+        return UnCallable(url)
 
-    def make_redirect(func: Callable[..., 'Redirect']) -> Callable[..., 'Redirect']:
+    def make_redirect(func: Callable[Concatenate[STATE, PARAMS], 'Redirect']) -> UnCallable[STATE, PARAMS, 'Redirect']:
         local_url = url
         if local_url is None:
             local_url = func.__name__
         server.add_route(local_url, func)
-        return func
+        return UnCallable(func)
 
     return make_redirect
