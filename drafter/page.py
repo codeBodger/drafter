@@ -1,7 +1,7 @@
 # from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING, Optional, TypeAlias, TypeVar, Union
+from typing import Any, TYPE_CHECKING, Callable, Optional, TypeAlias, TypeVar, Union
 
 from drafter.configuration import ServerConfiguration
 from drafter.constants import RESTORABLE_STATE_KEY
@@ -156,7 +156,7 @@ class Redirect(Page):
     :param to: The route to redirect to.
     :type to: (Any) -> Page
     """
-    def __init__(self, state: STATE, to: 'UnCallable[STATE, [], Page]') -> None:
+    def __init__(self, state: STATE, to: 'UnCallable[Callable[[STATE], Page]]') -> None:
         route = friendly_urls(to.__name__)
         content: list[Content] = [f"""<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="goToRoute('{route}')">"""]
         super().__init__(state, content)
