@@ -1,12 +1,9 @@
-from typing import Any, Concatenate, Generic, ParamSpec, TypeVar, Union, Callable, Optional, TYPE_CHECKING, overload
+from typing import Any, Concatenate, Generic, TypeVar, Union, Callable, Optional, TYPE_CHECKING, overload
 from drafter.server import Server, get_main_server
 
 if TYPE_CHECKING:
     from drafter.page import Page, Redirect
 
-RETURN = TypeVar('RETURN', bound='Page', covariant=True)
-PARAMS = ParamSpec('PARAMS')
-STATE = TypeVar('STATE')
 
 FUNC = TypeVar('FUNC', bound=Callable[Concatenate[Any, ...], 'Page'], covariant=True)
 
@@ -19,17 +16,19 @@ class Route(Generic[FUNC]):
 
 
 
+ROUTE = TypeVar('ROUTE', bound=Callable[[Any], 'Page'])
+
 @overload
-def route(url: Callable[[STATE], 'Page'], server: Optional[Server] = None) -> Route[Callable[[STATE], 'Page']]: ...
+def route(url: ROUTE, server: Optional[Server] = None) -> Route[ROUTE]: ...
 @overload
 def route(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[
-    [Callable[[STATE], 'Page']],
-    Route[Callable[[STATE], 'Page']]
+    [ROUTE],
+    Route[ROUTE]
 ]: ...
 
-def route(url: Union[Callable[[STATE], 'Page'], str, None] = None, server: Optional[Server] = None) -> Union[
-        Route[Callable[[STATE], 'Page']],
-        Callable[[Callable[[STATE], 'Page']], Route[Callable[[STATE], 'Page']]]
+def route(url: Union[ROUTE, str, None] = None, server: Optional[Server] = None) -> Union[
+        Route[ROUTE],
+        Callable[[ROUTE], Route[ROUTE]]
     ]:
     """
     Main function to add a new route to the server. Recommended to use as a decorator.
@@ -49,7 +48,7 @@ def route(url: Union[Callable[[STATE], 'Page'], str, None] = None, server: Optio
         server.add_route(local_url, url)
         return Route(url)
 
-    def make_route(func: Callable[[STATE], 'Page']) -> Route[Callable[[STATE], 'Page']]:
+    def make_route(func: ROUTE) -> Route[ROUTE]:
         local_url = url
         if local_url is None:
             local_url = func.__name__
@@ -59,17 +58,19 @@ def route(url: Union[Callable[[STATE], 'Page'], str, None] = None, server: Optio
     return make_route
 
 
+REDIRECT = TypeVar('REDIRECT', bound=Callable[Concatenate[Any, ...], 'Redirect'])
+
 @overload
-def redirect(url: Callable[Concatenate[STATE, PARAMS], 'Redirect'], server: Optional[Server] = None) -> Route[Callable[Concatenate[STATE, PARAMS], 'Redirect']]: ...
+def redirect(url: REDIRECT, server: Optional[Server] = None) -> Route[REDIRECT]: ...
 @overload
 def redirect(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[
-        [Callable[Concatenate[STATE, PARAMS], 'Redirect']],
-        Route[Callable[Concatenate[STATE, PARAMS], 'Redirect']]
+        [REDIRECT],
+        Route[REDIRECT]
     ]: ...
 
-def redirect(url: Union[Callable[Concatenate[STATE, PARAMS], 'Redirect'], str, None] = None, server: Optional[Server] = None) -> Union[
-        Route[Callable[Concatenate[STATE, PARAMS], 'Redirect']],
-        Callable[[Callable[Concatenate[STATE, PARAMS], 'Redirect']], Route[Callable[Concatenate[STATE, PARAMS], 'Redirect']]]
+def redirect(url: Union[REDIRECT, str, None] = None, server: Optional[Server] = None) -> Union[
+        Route[REDIRECT],
+        Callable[[REDIRECT], Route[REDIRECT]]
     ]:
     """
     Main function to add a new redirect to the server. Recommended to use as a decorator.
@@ -87,7 +88,7 @@ def redirect(url: Union[Callable[Concatenate[STATE, PARAMS], 'Redirect'], str, N
         server.add_route(local_url, url)
         return Route(url)
 
-    def make_redirect(func: Callable[Concatenate[STATE, PARAMS], 'Redirect']) -> Route[Callable[Concatenate[STATE, PARAMS], 'Redirect']]:
+    def make_redirect(func: REDIRECT) -> Route[REDIRECT]:
         local_url = url
         if local_url is None:
             local_url = func.__name__
