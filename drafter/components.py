@@ -1,5 +1,5 @@
 from dataclasses import dataclass, is_dataclass, fields
-from typing import TYPE_CHECKING, Any, Callable, Self, TypeAlias, Union, Optional, List, Dict, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Concatenate, Self, TypeAlias, Union, Optional, List, Dict, Tuple
 import io
 import base64
 # from urllib.parse import quote_plus
@@ -21,7 +21,8 @@ except ImportError:
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
     from drafter.server import Server
-    from drafter.page import _Page
+    from drafter.page import Page
+    from drafter.routes import Route
 
 
 BASELINE_ATTRS = ["id", "class", "style", "title", "lang", "dir", "accesskey", "tabindex", "value",
@@ -353,11 +354,11 @@ class SubmitButton(PageContent, LinkContent):
 @dataclass
 class Button(PageContent):
     text: str
-    onclick: Callable[..., Any]
+    onclick: 'Route[Callable[Concatenate[Any, ...], Page]]'
     args: list[Any]
     kwargs: dict[str, Any]
 
-    def __init__(self, text: str, onclick: Callable[..., Any],
+    def __init__(self, text: str, onclick: 'Route[Callable[Concatenate[Any, ...], Page]]',
                  args: Optional[list[Any]] = None, kwargs: Optional[dict[str, Any]] = None,
                  **extra_settings: Any) -> None:
         self.text = text
