@@ -10,7 +10,7 @@ from drafter.urls import friendly_urls
 
 if TYPE_CHECKING:
     from drafter.server import Server
-    from drafter.routes import UnCallable
+    from drafter.routes import Route
 
 
 @dataclass
@@ -156,7 +156,7 @@ class Redirect(Page):
     :param to: The route to redirect to.
     :type to: (Any) -> Page
     """
-    def __init__(self, state: STATE, to: 'UnCallable[Callable[[STATE], Page]]') -> None:
+    def __init__(self, state: STATE, to: 'Route[Callable[[STATE], Page]]') -> None:
         route = friendly_urls(to.__name__)
         content: list[Content] = [f"""<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="goToRoute('{route}')">"""]
         super().__init__(state, content)
