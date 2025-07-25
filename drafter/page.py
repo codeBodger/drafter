@@ -1,14 +1,16 @@
 # from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING, Optional, TypeAlias, Union
+from typing import Any, TYPE_CHECKING, Callable, Optional, TypeAlias, TypeVar, Union
 
 from drafter.configuration import ServerConfiguration
 from drafter.constants import RESTORABLE_STATE_KEY
 from drafter.components import Content, PageContent, Link
+from drafter.urls import friendly_urls
 
 if TYPE_CHECKING:
     from drafter.server import Server
+    from drafter.routes import Route
 
 
 @dataclass
@@ -137,6 +139,27 @@ class Page:
             if isinstance(chunk, Link):
                 chunk.verify(server)
         return True
+
+
+STATE = TypeVar('STATE')
+
+class Redirect(Page):
+    """
+    A Redirect is a Page that simply redirects to another route.
+
+    - As with Pages, this takes the ``state``, which is the current value of the backend
+      server for this user's session. Typically, this will be a dataclass or a dictionary,
+      but could also be a list, primitive value, or even None.
+    - Instead of ``content``, a Redirect takes a route.
+
+    :param state: The state of the page. If only one argument is provided, this will default to be ``None``.
+    :param to: The route to redirect to.
+    :type to: (Any) -> Page
+    """
+    def __init__(self, state: STATE, to: 'Route[Callable[[STATE], Page]]') -> None:
+        route = friendly_urls(to.__name__)
+        content: list[Content] = [f"""<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="goToRoute('{route}')">"""]
+        super().__init__(state, content)
 
 
 _Page: TypeAlias = Union[str, Page]

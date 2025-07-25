@@ -16,13 +16,14 @@ TODO: Finish these
 - [ ] Swappable backends
 - [ ] Text is equal to strings?
 - [X] Remove all references to Bottle (functionally done)
+- [ ] Make LinkContent take Route or str
 
 Components to develop:
 
 - [ ] Image
 - [x] Table
 - [ ] Link
-- [X] Button
+- [ ] Button
 - [ ] SubmitButton
 - [ ] Markdown
 - [X] Textbox

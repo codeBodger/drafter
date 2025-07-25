@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Runtime generation of index.html
 * The CDN is in this repository
 * Server.prepare_args now handles var-args
+* Redirect: A special page to forward the user to another page
+* Modified route to only accept (State) -> Page
+* redirect: a route-like decorator to allow for passing non-state data, since route can't
+* Route: A class to wrap routes and redirects, so they can't be called directly
 
 ### Removed
 
