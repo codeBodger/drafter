@@ -6,10 +6,15 @@ name: "Build Documentation "
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the main branch
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  # push:
+  #   branches: [ main ]
+  # pull_request:
+  #   branches: [ main ]
+  # Only trigger when the CDN workflow has run, so the old stuff has been cleared out
+  workflow_run:
+    workflows: ["Publish CDN "]
+    types:
+      - completed
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
