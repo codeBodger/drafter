@@ -26,10 +26,13 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
       
+      - name: Move CDN
+        run: |
+          mkdir .cdn
+          mv cdn .cdn
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         if: github.ref == 'refs/heads/main'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./cdn
-          destination_dir: cdn
+          publish_dir: ./.cdn
