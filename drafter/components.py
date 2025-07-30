@@ -1,5 +1,5 @@
 from dataclasses import dataclass, is_dataclass, fields
-from typing import TYPE_CHECKING, Any, Callable, Self, TypeAlias, Union, Optional, List, Dict, Tuple
+from typing import TYPE_CHECKING, Any, Callable, TypeAlias, Union, Optional, List, Dict, Tuple
 import io
 import base64
 # from urllib.parse import quote_plus
@@ -22,6 +22,12 @@ if TYPE_CHECKING:
     from _typeshed import DataclassInstance
     from drafter.server import Server
     from drafter.page import _Page
+
+import sys
+if 'Skulpt' in sys.version or sys.version_info >= (3, 11):
+    from typing import Self # type: ignore
+else:
+    from typing_extensions import Self
 
 
 BASELINE_ATTRS = ["id", "class", "style", "title", "lang", "dir", "accesskey", "tabindex", "value",
