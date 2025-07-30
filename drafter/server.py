@@ -6,7 +6,7 @@ import os
 import traceback
 from dataclasses import dataclass, replace, field, fields
 from functools import wraps
-from typing import Any, Callable, Never, Optional, List, Tuple, Union
+from typing import Any, Callable, Optional, List, Tuple, Union
 import json
 import inspect
 import pathlib
