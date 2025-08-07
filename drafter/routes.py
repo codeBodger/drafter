@@ -14,21 +14,39 @@ class Route(Generic[FUNC]):
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.func, attr)
 
+class TrueRoute(Generic[FUNC]):
+    def __init__(self, func: FUNC) -> None:
+        self.func = func
+    
+    def __getattr__(self, attr: str) -> Any:
+        return getattr(self.func, attr)
+    
+    def __call__(self, state: Any) -> Redirect:
+        return Redirect(state, Route(self.func))
+
+class RedirectRoute(Generic[FUNC]):
+    def __init__(self, func: FUNC) -> None:
+        self.func = func
+    
+    def __getattr__(self, attr: str) -> Any:
+        return getattr(self.func, attr)
+    
+
 
 
 ROUTE = TypeVar('ROUTE', bound=Callable[[Any], 'Page'])
 
 @overload
-def route(url: ROUTE, server: Optional[Server] = None) -> Route[ROUTE]: ...
+def route(url: ROUTE, server: Optional[Server] = None) -> TrueRoute[ROUTE]: ...
 @overload
 def route(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[
     [ROUTE],
-    Route[ROUTE]
+    TrueRoute[ROUTE]
 ]: ...
 
 def route(url: Union[ROUTE, str, None] = None, server: Optional[Server] = None) -> Union[
-        Route[ROUTE],
-        Callable[[ROUTE], Route[ROUTE]]
+        TrueRoute[ROUTE],
+        Callable[[ROUTE], TrueRoute[ROUTE]]
     ]:
     """
     Main function to add a new route to the server. Recommended to use as a decorator.
@@ -46,14 +64,14 @@ def route(url: Union[ROUTE, str, None] = None, server: Optional[Server] = None) 
     if callable(url):
         local_url = url.__name__
         server.add_route(local_url, url)
-        return Route(url)
+        return TrueRoute(url)
 
-    def make_route(func: ROUTE) -> Route[ROUTE]:
+    def make_route(func: ROUTE) -> TrueRoute[ROUTE]:
         local_url = url
         if local_url is None:
             local_url = func.__name__
         server.add_route(local_url, func)
-        return Route(func)
+        return TrueRoute(func)
 
     return make_route
 
@@ -61,16 +79,16 @@ def route(url: Union[ROUTE, str, None] = None, server: Optional[Server] = None) 
 REDIRECT = TypeVar('REDIRECT', bound=Callable[Concatenate[Any, ...], 'Redirect'])
 
 @overload
-def redirect(url: REDIRECT, server: Optional[Server] = None) -> Route[REDIRECT]: ...
+def redirect(url: REDIRECT, server: Optional[Server] = None) -> RedirectRoute[REDIRECT]: ...
 @overload
 def redirect(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[
         [REDIRECT],
-        Route[REDIRECT]
+        RedirectRoute[REDIRECT]
     ]: ...
 
 def redirect(url: Union[REDIRECT, str, None] = None, server: Optional[Server] = None) -> Union[
-        Route[REDIRECT],
-        Callable[[REDIRECT], Route[REDIRECT]]
+        RedirectRoute[REDIRECT],
+        Callable[[REDIRECT], RedirectRoute[REDIRECT]]
     ]:
     """
     Main function to add a new redirect to the server. Recommended to use as a decorator.
@@ -86,13 +104,13 @@ def redirect(url: Union[REDIRECT, str, None] = None, server: Optional[Server] = 
     if callable(url):
         local_url = url.__name__
         server.add_route(local_url, url)
-        return Route(url)
+        return RedirectRoute(url)
 
-    def make_redirect(func: REDIRECT) -> Route[REDIRECT]:
+    def make_redirect(func: REDIRECT) -> RedirectRoute[REDIRECT]:
         local_url = url
         if local_url is None:
             local_url = func.__name__
         server.add_route(local_url, func)
-        return Route(func)
+        return RedirectRoute(func)
 
     return make_redirect
