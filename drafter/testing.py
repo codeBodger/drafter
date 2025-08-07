@@ -30,7 +30,8 @@ def get_line_code(depth: int = DEFAULT_STACK_DEPTH) -> Union[tuple[int, Union[st
         # Find the first assert_equal line
         for data in trace:
             line, code = data[1], data[3]
-            if (code or "").strip().startswith('assert_equal'):
+            code_ = (code or "").strip()
+            if code_.startswith('assert_equal') or code_.startswith('assert_state_equal'):
                 return line, code
         # If none found, just try jumping up there and see what we can find
         frame = trace[len(trace) - depth]
@@ -80,6 +81,11 @@ class BakeryTests:
                 x_actual = x
             
             return original_function(x_actual, y, precision, exact_strings, *args)
+    
+    def create_assert_state_equal(self, given_assert_equal: Callable[..., bool]) -> Callable[..., bool]:
+        def assert_state_equal(x: Redirect, y: Any, *args: Any, **kwargs: Any) -> bool:
+            return given_assert_equal(x.state, y, *args, **kwargs)
+        return assert_state_equal
 
 
 # Modifies Bakery's copy of assert_equal, and also provides a new version for folks who already imported
@@ -88,10 +94,17 @@ if bakery is not None:
     bakery.assertions.get_line_code = _bakery_tests.wrap_get_line_code(bakery.assertions.get_line_code)
     bakery.assert_equal = assert_equal = _bakery_tests.track_bakery_tests(bakery.assert_equal)
     bakery.assertions._is_equal = _is_equal = _bakery_tests.wrap__is_equal(bakery.assertions._is_equal)
+    bakery.assert_state_equal = assert_state_equal = _bakery_tests.create_assert_state_equal(bakery.assert_equal)
 else:
     def assert_equal(*args: Any, **kwargs: Any) -> bool:
         """ Pointless definition of assert_equal to avoid errors """
         print("The Bakery testing library is not installed; skipping assert_equal tests. "
+              "To fix this, you can install Bakery with 'pip install bakery' or use a different testing framework.")
+        return False
+
+    def assert_state_equal(*args: Any, **kwargs: Any) -> bool:
+        """ Pointless definition of assert_state_equal to avoid errors """
+        print("The Bakery testing library is not installed; skipping assert_state_equal tests. "
               "To fix this, you can install Bakery with 'pip install bakery' or use a different testing framework.")
         return False
 
