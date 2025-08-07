@@ -3,6 +3,7 @@ from drafter.server import Server, get_main_server
 
 if TYPE_CHECKING:
     from drafter.page import Page, Redirect
+    from typing_extensions import TypeIs
 
 
 FUNC = TypeVar('FUNC', bound=Callable[Concatenate[Any, ...], 'Page'], covariant=True)
@@ -35,18 +36,23 @@ class RedirectRoute(Generic[FUNC]):
 
 
 ROUTE = TypeVar('ROUTE', bound=Callable[[Any], 'Page'])
+REDIRECT = TypeVar('REDIRECT', bound=Callable[Concatenate[Any, Any, ...], 'Redirect'])
 
 @overload
 def route(url: ROUTE, server: Optional[Server] = None) -> TrueRoute[ROUTE]: ...
+
+@overload
+def route(url: REDIRECT, server: Optional[Server] = None) -> RedirectRoute[REDIRECT]: ...
+
 @overload
 def route(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[
-    [ROUTE],
-    TrueRoute[ROUTE]
-]: ...
+        [Union[ROUTE, REDIRECT]],
+        Union[TrueRoute[ROUTE], RedirectRoute[REDIRECT]]
+    ]: ...
 
-def route(url: Union[ROUTE, str, None] = None, server: Optional[Server] = None) -> Union[
-        TrueRoute[ROUTE],
-        Callable[[ROUTE], TrueRoute[ROUTE]]
+def route(url: Union[ROUTE, REDIRECT, str, None] = None, server: Optional[Server] = None) -> Union[
+        TrueRoute[ROUTE], RedirectRoute[REDIRECT],
+        Callable[[Union[ROUTE, REDIRECT]], Union[TrueRoute[ROUTE], RedirectRoute[REDIRECT]]]
     ]:
     """
     Main function to add a new route to the server. Recommended to use as a decorator.
@@ -64,53 +70,60 @@ def route(url: Union[ROUTE, str, None] = None, server: Optional[Server] = None) 
     if callable(url):
         local_url = url.__name__
         server.add_route(local_url, url)
-        return TrueRoute(url)
 
-    def make_route(func: ROUTE) -> TrueRoute[ROUTE]:
+        if is_true_route(url):
+            return TrueRoute(url)
+        elif is_redirect_route(url): # should just be able to be an else, but Pylance isn't not happy
+            return RedirectRoute(url)
+
+    def make_route(func: Union[ROUTE, REDIRECT]) -> Union[TrueRoute[ROUTE], RedirectRoute[REDIRECT]]:
         local_url = url
         if local_url is None:
             local_url = func.__name__
         server.add_route(local_url, func)
-        return TrueRoute(func)
+
+        if is_true_route(func):
+            return TrueRoute(func)
+        elif is_redirect_route(func): # should just be able to be an else, but Pylance isn't not happy
+            return RedirectRoute(func)
 
     return make_route
 
+def is_true_route(func: Callable[..., Any]) -> 'TypeIs[Callable[[Any], Page]]':
+        annotations = set(func.__annotations__)
+        annotations.discard("return")
+        return len(annotations) == 1 # there is only one parameter, the state
+def is_redirect_route(func: Callable[..., Any]) -> 'TypeIs[Callable[Concatenate[Any, Any, ...], Redirect]]':
+        annotations = set(func.__annotations__)
+        annotations.discard("return")
+        return len(annotations) > 1 # there is more than one parameter, more than just the state
 
-REDIRECT = TypeVar('REDIRECT', bound=Callable[Concatenate[Any, ...], 'Redirect'])
 
-@overload
-def redirect(url: REDIRECT, server: Optional[Server] = None) -> RedirectRoute[REDIRECT]: ...
-@overload
-def redirect(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[
-        [REDIRECT],
-        RedirectRoute[REDIRECT]
-    ]: ...
+# def redirect(url: Union[REDIRECT, str, None] = None, server: Optional[Server] = None) -> Union[
+#         RedirectRoute[REDIRECT],
+#         Callable[[REDIRECT], RedirectRoute[REDIRECT]]
+#     ]:
+#     """
+#     Main function to add a new redirect to the server. Recommended to use as a decorator.
+#     A redirect allows arguments in addition to the state to be passed, but does not
+#     create a Page to be seen, in the same way as a route. Instead, a Redirect indicating
+#     the route to procede to must be returned.
 
-def redirect(url: Union[REDIRECT, str, None] = None, server: Optional[Server] = None) -> Union[
-        RedirectRoute[REDIRECT],
-        Callable[[REDIRECT], RedirectRoute[REDIRECT]]
-    ]:
-    """
-    Main function to add a new redirect to the server. Recommended to use as a decorator.
-    A redirect allows arguments in addition to the state to be passed, but does not
-    create a Page to be seen, in the same way as a route. Instead, a Redirect indicating
-    the route to procede to must be returned.
+#     :param url: The URL to add the redirect to. If None, the function name will be used.
+#     :param server: The server to add the redirect to. Defaults to the main server.
+#     :return: The modified redirect function.
+#     """
+#     server = server or get_main_server()
+#     if callable(url):
+#         local_url = url.__name__
+#         server.add_route(local_url, url)
+#         return RedirectRoute(url)
 
-    :param url: The URL to add the redirect to. If None, the function name will be used.
-    :param server: The server to add the redirect to. Defaults to the main server.
-    :return: The modified redirect function.
-    """
-    server = server or get_main_server()
-    if callable(url):
-        local_url = url.__name__
-        server.add_route(local_url, url)
-        return RedirectRoute(url)
+#     def make_redirect(func: REDIRECT) -> RedirectRoute[REDIRECT]:
+#         local_url = url
+#         if local_url is None:
+#             local_url = func.__name__
+#         server.add_route(local_url, func)
+#         return RedirectRoute(func)
 
-    def make_redirect(func: REDIRECT) -> RedirectRoute[REDIRECT]:
-        local_url = url
-        if local_url is None:
-            local_url = func.__name__
-        server.add_route(local_url, func)
-        return RedirectRoute(func)
-
-    return make_redirect
+#     return make_redirect
