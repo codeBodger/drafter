@@ -12,22 +12,6 @@ except:
 import logging
 logger = logging.getLogger('drafter')
 
-@wraps(bakery._is_equal)
-def _is_equal_with_routes(x: Any, y: Any, precision, exact_strings, preserve_routes: bool = False, *args: Any) -> bool:
-    if not preserve_routes:
-        if isinstance(x, partial):
-            x_actual = x()
-        elif isinstance(x, Redirect):
-            x_actual = x.not__call__()
-        else:
-            x_actual = x
-    else:
-        x_actual = x
-    
-    return bakery._is_equal(x_actual, y, precision, exact_strings, *args)
-
-bakery._is_equal = _is_equal = _is_equal_with_routes
-
 @dataclass
 class BakeryTestCase:
     args: tuple[Any, ...]
@@ -82,12 +66,28 @@ class BakeryTests:
 
         return new_function
 
+    def wrap__is_equal(self, original_function: Callable[..., bool]) -> Callable[..., bool]:
+        @wraps(original_function)
+        def _is_equal_with_routes(x: Any, y: Any, precision, exact_strings, preserve_routes: bool = False, *args: Any) -> bool:
+            if not preserve_routes:
+                if isinstance(x, partial):
+                    x_actual = x()
+                elif isinstance(x, Redirect):
+                    x_actual = x.not__call__()
+                else:
+                    x_actual = x
+            else:
+                x_actual = x
+            
+            return original_function(x_actual, y, precision, exact_strings, *args)
+
 
 # Modifies Bakery's copy of assert_equal, and also provides a new version for folks who already imported
 _bakery_tests = BakeryTests()
 if bakery is not None:
     bakery.assertions.get_line_code = _bakery_tests.wrap_get_line_code(bakery.assertions.get_line_code)
     bakery.assert_equal = assert_equal = _bakery_tests.track_bakery_tests(bakery.assert_equal)
+    bakery.assertions._is_equal = _is_equal = _bakery_tests.wrap__is_equal(bakery.assertions._is_equal)
 else:
     def assert_equal(*args: Any, **kwargs: Any) -> bool:
         """ Pointless definition of assert_equal to avoid errors """

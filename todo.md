@@ -17,7 +17,7 @@ TODO: Finish these
 - [ ] Text is equal to strings?
 - [X] Remove all references to Bottle (functionally done)
 - [ ] Make LinkContent take Route or str
-- [ ] Ensure that `assert_equal` actually works
+- [ ] Ensure that `assert_equal` actually works for routes
 
 Components to develop:
 
