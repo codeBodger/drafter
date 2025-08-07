@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Concatenate, Generic, TypeVar, Union, Callable, Optional, TYPE_CHECKING, overload
 from drafter.server import Server, get_main_server
 
@@ -7,6 +8,8 @@ if TYPE_CHECKING:
 
 
 FUNC = TypeVar('FUNC', bound=Callable[Concatenate[Any, ...], 'Page'], covariant=True)
+ROUTE = TypeVar('ROUTE', bound=Callable[[Any], 'Page'])
+REDIRECT = TypeVar('REDIRECT', bound=Callable[Concatenate[Any, Any, ...], 'Redirect'])
 
 class Route(Generic[FUNC]):
     def __init__(self, func: FUNC) -> None:
@@ -15,8 +18,8 @@ class Route(Generic[FUNC]):
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.func, attr)
 
-class TrueRoute(Generic[FUNC]):
-    def __init__(self, func: FUNC) -> None:
+class TrueRoute(Generic[ROUTE]):
+    def __init__(self, func: ROUTE) -> None:
         self.func = func
     
     def __getattr__(self, attr: str) -> Any:
@@ -25,18 +28,16 @@ class TrueRoute(Generic[FUNC]):
     def __call__(self, state: Any) -> Redirect:
         return Redirect(state, Route(self.func))
 
-class RedirectRoute(Generic[FUNC]):
-    def __init__(self, func: FUNC) -> None:
+class RedirectRoute(Generic[REDIRECT]):
+    def __init__(self, func: REDIRECT) -> None:
         self.func = func
     
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.func, attr)
     
+    def __call__(self, *args: Any, **kwargs: Any) -> Callable[[], 'Redirect']:
+        return partial(self.func, *args, **kwargs)
 
-
-
-ROUTE = TypeVar('ROUTE', bound=Callable[[Any], 'Page'])
-REDIRECT = TypeVar('REDIRECT', bound=Callable[Concatenate[Any, Any, ...], 'Redirect'])
 
 @overload
 def route(url: ROUTE, server: Optional[Server] = None) -> TrueRoute[ROUTE]: ...
@@ -97,33 +98,3 @@ def is_redirect_route(func: Callable[..., Any]) -> 'TypeIs[Callable[Concatenate[
         annotations = set(func.__annotations__)
         annotations.discard("return")
         return len(annotations) > 1 # there is more than one parameter, more than just the state
-
-
-# def redirect(url: Union[REDIRECT, str, None] = None, server: Optional[Server] = None) -> Union[
-#         RedirectRoute[REDIRECT],
-#         Callable[[REDIRECT], RedirectRoute[REDIRECT]]
-#     ]:
-#     """
-#     Main function to add a new redirect to the server. Recommended to use as a decorator.
-#     A redirect allows arguments in addition to the state to be passed, but does not
-#     create a Page to be seen, in the same way as a route. Instead, a Redirect indicating
-#     the route to procede to must be returned.
-
-#     :param url: The URL to add the redirect to. If None, the function name will be used.
-#     :param server: The server to add the redirect to. Defaults to the main server.
-#     :return: The modified redirect function.
-#     """
-#     server = server or get_main_server()
-#     if callable(url):
-#         local_url = url.__name__
-#         server.add_route(local_url, url)
-#         return RedirectRoute(url)
-
-#     def make_redirect(func: REDIRECT) -> RedirectRoute[REDIRECT]:
-#         local_url = url
-#         if local_url is None:
-#             local_url = func.__name__
-#         server.add_route(local_url, func)
-#         return RedirectRoute(func)
-
-#     return make_redirect

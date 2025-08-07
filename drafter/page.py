@@ -157,9 +157,14 @@ class Redirect(Page):
     :type to: (Any) -> Page
     """
     def __init__(self, state: STATE, to: 'Route[Callable[[STATE], Page]]') -> None:
+        self.state = state
+        self.to = to
         route = friendly_urls(to.__name__)
         content: list[Content] = [f"""<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="goToRoute('{route}')">"""]
         super().__init__(state, content)
+    
+    def not__call__(self) -> Page:
+        return self.to.func(self.state)
 
 
 _Page: TypeAlias = Union[str, Page]

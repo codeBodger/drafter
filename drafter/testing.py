@@ -1,7 +1,9 @@
 from dataclasses import dataclass
-from functools import wraps
+from functools import partial, wraps
 from typing import Any, Callable, Optional, Union
 import difflib
+
+from drafter.page import Redirect
 try:
     import bakery
 except:
@@ -9,6 +11,22 @@ except:
 
 import logging
 logger = logging.getLogger('drafter')
+
+@wraps(bakery._is_equal)
+def _is_equal_with_routes(x: Any, y: Any, precision, exact_strings, preserve_routes: bool = False, *args: Any) -> bool:
+    if not preserve_routes:
+        if isinstance(x, partial):
+            x_actual = x()
+        elif isinstance(x, Redirect):
+            x_actual = x.not__call__()
+        else:
+            x_actual = x
+    else:
+        x_actual = x
+    
+    return bakery._is_equal(x_actual, y, precision, exact_strings, *args)
+
+bakery._is_equal = _is_equal = _is_equal_with_routes
 
 @dataclass
 class BakeryTestCase:
