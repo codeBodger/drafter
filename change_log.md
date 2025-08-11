@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `Route`: A Generic class to wrap routes, so their behavior is more friendly
 * `TrueRoute`: A callable wrapper for some routes (see above), returns a `Redirect`
 * `RedirectRoute`: A callable wrapper for other routes (see above), returns a 0-parameter `partial`
+* `assert_state_equal` checks if a `Redirect`'s state is what is expected
+  * i.e. the state after a `route` has run
 
 ### Removed
 
@@ -37,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * The @route decorator now has correct typing, done using @overload
 * Fixed broad issues with errors and made them pretier
 * Button now assumes args are a list, not a tuple, that way students are less confused
+* `assert_equal` now evaluates `Redirect`s and `partial`s, so it behaves as it should for routes
 
 ## [1.7.2] - 2025-04-17
 
