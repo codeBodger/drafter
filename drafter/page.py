@@ -152,6 +152,8 @@ class Redirect(Page):
       but could also be a list, primitive value, or even None.
     - Instead of ``content``, a Redirect takes a route.
 
+    TODO: Make `Redirect`s not overwrite the page, so it's not briefly blank.
+
     :param state: The state of the page. If only one argument is provided, this will default to be ``None``.
     :param to: The route to redirect to.
     :type to: (Any) -> Page
