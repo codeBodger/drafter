@@ -84,6 +84,7 @@ class BakeryTests:
                 x_actual = x
             
             return original_function(x_actual, y, precision, exact_strings, *args)
+        return _is_equal_with_routes
     
     def create_assert_state_equal(self, given_assert_equal: Callable[..., bool]) -> Callable[..., bool]:
         def assert_state_equal(x: 'Redirect', y: Any, *args: Any, **kwargs: Any) -> bool:
