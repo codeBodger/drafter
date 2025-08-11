@@ -19,7 +19,7 @@ class Route(Generic[FUNC]):
         return getattr(self.func, attr)
 
 class TrueRoute(Route[ROUTE]):    
-    def __call__(self, state: Any) -> Redirect:
+    def __call__(self, state: Any) -> 'Redirect':
         return Redirect(state, Route(self.func))
 
 class RedirectRoute(Route[REDIRECT]):

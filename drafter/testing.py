@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 from functools import partial, wraps
-from typing import Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 import difflib
 
-from drafter.page import Redirect
 try:
     import bakery
 except:
     bakery = None
+
+if TYPE_CHECKING:
+    from drafter.page import Redirect
 
 import logging
 logger = logging.getLogger('drafter')
@@ -73,7 +75,8 @@ class BakeryTests:
             if not preserve_routes:
                 if isinstance(x, partial):
                     x_actual = x()
-                elif isinstance(x, Redirect):
+                # Check if it's a Redirect without import
+                elif hasattr(x, "not__call__") and callable(x.not__call__):
                     x_actual = x.not__call__()
                 else:
                     x_actual = x
@@ -83,7 +86,7 @@ class BakeryTests:
             return original_function(x_actual, y, precision, exact_strings, *args)
     
     def create_assert_state_equal(self, given_assert_equal: Callable[..., bool]) -> Callable[..., bool]:
-        def assert_state_equal(x: Redirect, y: Any, *args: Any, **kwargs: Any) -> bool:
+        def assert_state_equal(x: 'Redirect', y: Any, *args: Any, **kwargs: Any) -> bool:
             return given_assert_equal(x.state, y, *args, **kwargs)
         return assert_state_equal
 
