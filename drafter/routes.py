@@ -1,4 +1,5 @@
 from functools import partial
+from inspect import Parameter, signature
 from typing import Any, Concatenate, Generic, TypeVar, Union, Callable, Optional, TYPE_CHECKING, overload
 from drafter.server import Server, get_main_server
 
@@ -20,6 +21,7 @@ class Route(Generic[FUNC]):
 
 class TrueRoute(Route[ROUTE]):    
     def __call__(self, state: Any) -> 'Redirect':
+        from drafter.page import Redirect
         return Redirect(state, Route(self.func))
 
 class RedirectRoute(Route[REDIRECT]):
@@ -69,7 +71,7 @@ def route(func_or_route_name: Union[ROUTE, REDIRECT, str, None] = None, server: 
         elif is_redirect_route(func): # should just be able to be an else, but Pylance isn't not happy
             return RedirectRoute(func)
         else:
-            raise ValueError(f"The route {name} could not be added due to bad arguments or typing.")
+            raise ValueError(f"The route `{name}` could not be added due to bad arguments or typing.")
 
     def make_route(func: Union[ROUTE, REDIRECT]) -> Union[TrueRoute[ROUTE], RedirectRoute[REDIRECT]]:
         name = func_or_route_name
@@ -85,10 +87,11 @@ def route(func_or_route_name: Union[ROUTE, REDIRECT, str, None] = None, server: 
     return make_route
 
 def is_true_route(func: Callable[..., Any]) -> 'TypeIs[Callable[[Any], Page]]':
-        annotations = set(func.__annotations__)
-        annotations.discard("return")
-        return len(annotations) == 1 # there is only one parameter, the state
+        return req_param_count(func) == 1 # there is only one parameter, the state
 def is_redirect_route(func: Callable[..., Any]) -> 'TypeIs[Callable[Concatenate[Any, Any, ...], Redirect]]':
-        annotations = set(func.__annotations__)
-        annotations.discard("return")
-        return len(annotations) > 1 # there is more than one parameter, more than just the state
+        return req_param_count(func) > 1 # there is more than one parameter, more than just the state
+SINGLE_PARAM = [Parameter.KEYWORD_ONLY, Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD]
+def req_param_count(func: Callable[..., Any]) -> int:
+    sig_params = list(signature(func).parameters.values())
+    single_params = [param.name for param in sig_params if param.kind in SINGLE_PARAM]
+    return len(single_params) - len(func.__defaults__ or [])
