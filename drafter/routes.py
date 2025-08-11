@@ -28,48 +28,54 @@ class RedirectRoute(Route[REDIRECT]):
 
 
 @overload
-def route(url: ROUTE, server: Optional[Server] = None) -> TrueRoute[ROUTE]: ...
+def route(func_or_route_name: ROUTE, server: Optional[Server] = None) -> TrueRoute[ROUTE]: ...
 
 @overload
-def route(url: REDIRECT, server: Optional[Server] = None) -> RedirectRoute[REDIRECT]: ...
+def route(func_or_route_name: REDIRECT, server: Optional[Server] = None) -> RedirectRoute[REDIRECT]: ...
 
 @overload
-def route(url: Optional[str] = None, server: Optional[Server] = None) -> Callable[
+def route(func_or_route_name: Optional[str] = None, server: Optional[Server] = None) -> Callable[
         [Union[ROUTE, REDIRECT]],
         Union[TrueRoute[ROUTE], RedirectRoute[REDIRECT]]
     ]: ...
 
-def route(url: Union[ROUTE, REDIRECT, str, None] = None, server: Optional[Server] = None) -> Union[
+def route(func_or_route_name: Union[ROUTE, REDIRECT, str, None] = None, server: Optional[Server] = None) -> Union[
         TrueRoute[ROUTE], RedirectRoute[REDIRECT],
         Callable[[Union[ROUTE, REDIRECT]], Union[TrueRoute[ROUTE], RedirectRoute[REDIRECT]]]
     ]:
     """
     Main function to add a new route to the server. Recommended to use as a decorator.
-    Once added, the route will be available at the given URL; the function name will be used if no URL is provided.
-    When you go to the URL, the function will be called and its return value will be displayed.
+    Once added, the route will be available with the given name; the function name will
+    be used if none is provided. When you use the name (in a button or similar), the
+    function will be called and its return value will be displayed.
 
-    Note: No arguments beyond the state may be passed to routes.  Routes should not be
-    called directly.  
+    TODO: Discuss this
+    Note: If a `route` has required parameter beyond the state,
+        it must return a `Redirect`.
 
-    :param url: The URL to add the route to. If None, the function name will be used.
+    :param func_or_route_name: The name to use for the route.
+        If None, the function name will be used.
     :param server: The server to add the route to. Defaults to the main server.
     :return: The modified route function.
     """
     server = server or get_main_server()
-    if callable(url):
-        local_url = url.__name__
-        server.add_route(local_url, url)
+    if callable(func_or_route_name):
+        func = func_or_route_name
+        name = func.__name__
+        server.add_route(name, func)
 
-        if is_true_route(url):
-            return TrueRoute(url)
-        elif is_redirect_route(url): # should just be able to be an else, but Pylance isn't not happy
-            return RedirectRoute(url)
+        if is_true_route(func):
+            return TrueRoute(func)
+        elif is_redirect_route(func): # should just be able to be an else, but Pylance isn't not happy
+            return RedirectRoute(func)
+        else:
+            raise ValueError(f"The route {name} could not be added due to bad arguments or typing.")
 
     def make_route(func: Union[ROUTE, REDIRECT]) -> Union[TrueRoute[ROUTE], RedirectRoute[REDIRECT]]:
-        local_url = url
-        if local_url is None:
-            local_url = func.__name__
-        server.add_route(local_url, func)
+        name = func_or_route_name
+        if name is None:
+            name = func.__name__
+        server.add_route(name, func)
 
         if is_true_route(func):
             return TrueRoute(func)
