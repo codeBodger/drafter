@@ -18,23 +18,11 @@ class Route(Generic[FUNC]):
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.func, attr)
 
-class TrueRoute(Generic[ROUTE]):
-    def __init__(self, func: ROUTE) -> None:
-        self.func = func
-    
-    def __getattr__(self, attr: str) -> Any:
-        return getattr(self.func, attr)
-    
+class TrueRoute(Route[ROUTE]):    
     def __call__(self, state: Any) -> Redirect:
         return Redirect(state, Route(self.func))
 
-class RedirectRoute(Generic[REDIRECT]):
-    def __init__(self, func: REDIRECT) -> None:
-        self.func = func
-    
-    def __getattr__(self, attr: str) -> Any:
-        return getattr(self.func, attr)
-    
+class RedirectRoute(Route[REDIRECT]):
     def __call__(self, *args: Any, **kwargs: Any) -> Callable[[], 'Redirect']:
         return partial(self.func, *args, **kwargs)
 
